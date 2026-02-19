@@ -223,3 +223,56 @@ body{ font-family:'Heebo',sans-serif; background:var(--bg); color:var(--text); m
 .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
 
 select option{ background:#1a2e50; }
+
+/* ── PLACE SEARCH FORM ───────────────────────────────────────── */
+.pf-search-wrap {
+  margin-bottom: 14px;
+}
+.pf-search-row {
+  display: flex; gap: 8px; align-items: center;
+}
+.pf-search-input {
+  flex: 1; background: var(--bg); border: 1.5px solid var(--blue-light);
+  border-radius: 12px; padding: 12px 14px; color: var(--text);
+  font-family: 'Heebo', sans-serif; font-size: 15px; text-align: right;
+  outline: none; transition: border-color .2s;
+}
+.pf-search-input:focus { border-color: var(--blue); }
+.pf-search-btn {
+  flex-shrink: 0; background: var(--blue); color: white; border: none;
+  border-radius: 12px; padding: 12px 16px; font-family: 'Heebo', sans-serif;
+  font-size: 14px; font-weight: 700; cursor: pointer;
+  transition: transform .15s; -webkit-tap-highlight-color: transparent;
+}
+.pf-search-btn:active { transform: scale(.95); }
+
+/* results dropdown */
+.pf-results {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 12px; margin-top: 6px; overflow: hidden;
+  max-height: 280px; overflow-y: auto;
+}
+.pf-result-loading,
+.pf-result-empty {
+  padding: 16px; text-align: center; font-size: 13px; color: var(--text-dim);
+}
+.pf-result-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 14px; cursor: pointer; transition: background .15s;
+  border-bottom: 1px solid var(--border);
+}
+.pf-result-item:last-child { border-bottom: none; }
+.pf-result-item:hover, .pf-result-item:active { background: rgba(58,159,216,.1); }
+.pf-result-icon { font-size: 20px; flex-shrink: 0; }
+.pf-result-text { flex: 1; min-width: 0; }
+.pf-result-name { font-size: 14px; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pf-result-addr { font-size: 11px; color: var(--text-dim); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pf-result-arrow { color: var(--text-dim); font-size: 18px; flex-shrink: 0; }
+
+/* selected badge */
+.pf-map-wrap { margin-bottom: 14px; }
+.pf-selected-badge {
+  background: rgba(45,212,160,.1); border: 1px solid rgba(45,212,160,.3);
+  color: var(--green); border-radius: 10px; padding: 8px 12px;
+  font-size: 12px; margin-top: 8px; line-height: 1.6;
+}
