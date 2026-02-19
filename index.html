@@ -138,6 +138,24 @@
     </div>
   </div>
 
+  <!-- ═══ PAGE: מסעדות ═══ -->
+  <div id="pageRestaurants" class="page">
+    <div class="page-header">🍽️ מסעדות</div>
+    <div class="page-subheader">רשימת המסעדות לטיול</div>
+
+    <!-- Filter + Sort row -->
+    <div class="rest-toolbar">
+      <div class="rest-cat-filter" id="restCatFilter"></div>
+      <button class="proximity-btn" onclick="sortByProximity()">📍 דרג לפי קרבה</button>
+    </div>
+
+    <div id="restaurantsList"></div>
+
+    <div id="adminRestAddBtn" style="display:none;margin-top:8px">
+      <button class="add-btn" onclick="openAddRestModal()">➕ הוסף מסעדה</button>
+    </div>
+  </div>
+
   <!-- ═══ PAGE: צ'אט AI ═══ -->
   <div id="pageChat" class="page">
     <div class="chat-wrapper">
@@ -174,6 +192,9 @@
     </button>
     <button class="nav-item" onclick="showPage('map',this)">
       <span class="nav-icon">🗺️</span>מפה
+    </button>
+    <button class="nav-item" onclick="showPage('restaurants',this)">
+      <span class="nav-icon">🍽️</span>מסעדות
     </button>
     <button class="nav-item" onclick="showPage('chat',this)">
       <span class="nav-icon">💬</span>מדריך
