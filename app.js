@@ -202,6 +202,7 @@ function showPage(name,btn) {
   document.getElementById('page'+name.charAt(0).toUpperCase()+name.slice(1)).classList.add('active');
   if(btn) btn.classList.add('active');
   const renders = {
+    summary:     renderSummary,
     itinerary:   renderItinerary,
     expenses:    ()=>{ renderExpenses(); updateExpenseSummary(); },
     attractions: ()=>renderPlacePage('attractions'),
