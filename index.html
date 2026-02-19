@@ -2,7 +2,7 @@
 <html lang="he" dir="rtl">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
   <title>🏛️ טיול יוון 2025</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;900&display=swap" rel="stylesheet">
@@ -10,9 +10,7 @@
 </head>
 <body>
 
-<!-- ══════════════════════════════════════════
-     LOGIN
-═══════════════════════════════════════════ -->
+<!-- ══ LOGIN ══════════════════════════════════════════════════ -->
 <div id="loginScreen">
   <div class="login-card">
     <div class="login-logo">🏛️</div>
@@ -24,86 +22,118 @@
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════
-     APP
-═══════════════════════════════════════════ -->
+<!-- ══ APP ════════════════════════════════════════════════════ -->
 <div id="app">
 
   <!-- Top Bar -->
   <div class="top-bar">
     <div class="top-bar-title">🏛️ יוון 2025</div>
     <div class="top-bar-right">
-      <button id="keyStatusBtn" class="key-status-btn" onclick="showKeyModal()">🔑 הגדר Token</button>
+      <button id="keyStatusBtn" class="key-status-btn" onclick="showKeyModal()">🔑 Token</button>
       <span class="top-bar-user" id="topBarUser"></span>
       <span class="admin-badge" id="adminBadgeTop" style="display:none">מנהל</span>
       <button class="logout-btn" onclick="doLogout()">יציאה</button>
     </div>
   </div>
 
-  <!-- ═══ PAGE: בית ═══ -->
+  <!-- ══ PAGE: בית ════════════════════════════════════════════ -->
   <div id="pageSummary" class="page active">
-    <div class="expense-summary">
-      <div class="expense-summary-title">📊 סיכום הוצאות מהיר</div>
-      <div class="total-amount" id="summaryTotal">₪0</div>
-      <div class="total-label">סה"כ הוצאות</div>
-      <div class="cat-bars" id="summaryBars"></div>
-    </div>
     <div class="trip-hero">
       <div class="trip-hero-emoji">⛵</div>
       <div class="trip-hero-title">ברוכים הבאים ליוון!</div>
       <div class="trip-hero-sub">Faliro 8, Athens – בסיס המלון שלנו</div>
       <div class="trip-stats">
-        <div class="trip-stat"><div class="trip-stat-num">4</div><div class="trip-stat-label">ימים</div></div>
-        <div class="trip-stat"><div class="trip-stat-num" id="statAttrs">0</div><div class="trip-stat-label">אטרקציות</div></div>
+        <div class="trip-stat"><div class="trip-stat-num" id="statItinerary">0</div><div class="trip-stat-label">במסלול</div></div>
+        <div class="trip-stat"><div class="trip-stat-num" id="statAttr">0</div><div class="trip-stat-label">אטרקציות</div></div>
         <div class="trip-stat"><div class="trip-stat-num" id="statExpenses">0</div><div class="trip-stat-label">הוצאות</div></div>
       </div>
     </div>
-    <div class="section-title">📅 ימי הטיול</div>
-    <div id="summaryDaysList"></div>
-  </div>
-
-  <!-- ═══ PAGE: מסלול ═══ -->
-  <div id="pageItinerary" class="page">
-    <div class="page-header">📍 מסלול יומי</div>
-    <div class="page-subheader">סדר האטרקציות מחושב לפי מיקום מהמלון</div>
-    <div class="day-tabs" id="dayTabs"></div>
-    <button class="optimize-btn" onclick="optimizeDay()">🧭 סדר אטרקציות חכם לפי מיקום</button>
-    <div id="attractionsList"></div>
-    <div id="adminAddBtn" style="display:none;margin-top:8px">
-      <button class="add-btn" onclick="openAddAttrModal()">➕ הוסף אטרקציה</button>
+    <div class="expense-summary">
+      <div class="expense-summary-title">📊 סיכום הוצאות</div>
+      <div class="total-amount" id="summaryTotal">₪0</div>
+      <div class="total-label">סה"כ</div>
+      <div class="cat-bars" id="summaryBars"></div>
     </div>
   </div>
 
-  <!-- ═══ PAGE: הוצאות ═══ -->
+  <!-- ══ PAGE: מסלול ══════════════════════════════════════════ -->
+  <div id="pageItinerary" class="page">
+    <div class="page-header">📅 מסלול הטיול</div>
+    <div class="page-subheader">בחרו פריטים מאטרקציות, מסעדות וקניות</div>
+    <div class="day-tabs" id="dayTabs"></div>
+    <button class="optimize-btn" id="itinOptBtn" onclick="optimizeItineraryDay()" style="display:none">
+      🧭 סדר חכם לפי מיקום
+    </button>
+    <div id="itineraryList"></div>
+  </div>
+
+  <!-- ══ PAGE: אטרקציות ═══════════════════════════════════════ -->
+  <div id="pageAttractions" class="page">
+    <div class="page-header">🏛️ אטרקציות</div>
+    <div class="page-subheader">מקומות שווה לבקר בהם</div>
+    <div class="rest-toolbar">
+      <div class="rest-cat-filter" id="attractionsCatFilter"></div>
+      <button class="proximity-btn" id="attractionsProxBtn" onclick="sortByProximity('attractions')">📍 דרג לפי קרבה</button>
+    </div>
+    <div id="attractionsList"></div>
+    <div id="attractionsAdminAdd" style="display:none;margin-top:8px">
+      <button class="add-btn" onclick="openAddItem('attractions')">➕ הוסף אטרקציה</button>
+    </div>
+  </div>
+
+  <!-- ══ PAGE: מסעדות ═════════════════════════════════════════ -->
+  <div id="pageRestaurants" class="page">
+    <div class="page-header">🍽️ מסעדות</div>
+    <div class="page-subheader">מסעדות שווה לנסות</div>
+    <div class="rest-toolbar">
+      <div class="rest-cat-filter" id="restaurantsCatFilter"></div>
+      <button class="proximity-btn" id="restaurantsProxBtn" onclick="sortByProximity('restaurants')">📍 דרג לפי קרבה</button>
+    </div>
+    <div id="restaurantsList"></div>
+    <div id="restaurantsAdminAdd" style="display:none;margin-top:8px">
+      <button class="add-btn" onclick="openAddItem('restaurants')">➕ הוסף מסעדה</button>
+    </div>
+  </div>
+
+  <!-- ══ PAGE: קניות ══════════════════════════════════════════ -->
+  <div id="pageShopping" class="page">
+    <div class="page-header">🛍️ קניות</div>
+    <div class="page-subheader">שווקים וחנויות מומלצות</div>
+    <div class="rest-toolbar">
+      <div class="rest-cat-filter" id="shoppingCatFilter"></div>
+      <button class="proximity-btn" id="shoppingProxBtn" onclick="sortByProximity('shopping')">📍 דרג לפי קרבה</button>
+    </div>
+    <div id="shoppingList"></div>
+    <div id="shoppingAdminAdd" style="display:none;margin-top:8px">
+      <button class="add-btn" onclick="openAddItem('shopping')">➕ הוסף מקום קנייה</button>
+    </div>
+  </div>
+
+  <!-- ══ PAGE: הוצאות ═════════════════════════════════════════ -->
   <div id="pageExpenses" class="page">
     <div class="page-header">💰 הוצאות</div>
     <div class="page-subheader">מעקב הוצאות לטיול</div>
-
     <div class="rate-tag" id="rateTag">⏳ טוען שער יורו...</div>
-
     <div class="expense-summary">
       <div class="expense-summary-title">📊 חלוקה לפי קטגוריה</div>
       <div class="total-amount" id="summaryTotal2">₪0</div>
       <div class="total-label">סה"כ בשקלים</div>
       <div class="cat-bars" id="summaryBars2"></div>
     </div>
-
     <div class="exp-action-row">
       <button class="convert-btn" id="convertBtn" onclick="toggleConversion()">💱 הצג הכל בשקלים</button>
       <button class="csv-btn" onclick="exportCSV()">📥 ייצא CSV</button>
     </div>
-
     <button class="ai-analyze-btn" onclick="analyzeExpenses()">🤖 ניתוח AI – המלצות חיסכון</button>
     <div id="aiExpenseResult" style="display:none"></div>
-
     <div class="expense-form-card">
-      <div class="section-title" style="font-size:16px;margin-bottom:14px">הוסף הוצאה</div>
+      <div class="section-title" style="font-size:16px;margin-bottom:14px">➕ הוסף הוצאה</div>
       <label class="form-label">קטגוריה</label>
       <div class="cat-chips" id="expCatChips">
-        <div class="cat-chip active" data-cat="shopping" onclick="selectCat(this)" style="background:#9b72f0;border-color:#9b72f0;color:white">🛍️ שופינג</div>
-        <div class="cat-chip" data-cat="food"     onclick="selectCat(this)">🍽️ אוכל</div>
-        <div class="cat-chip" data-cat="transport" onclick="selectCat(this)">🚌 תחבורה</div>
-        <div class="cat-chip" data-cat="other"    onclick="selectCat(this)">📦 אחר</div>
+        <div class="cat-chip active" data-cat="shopping" onclick="selectExpCat(this)" style="background:#9b72f0;border-color:#9b72f0;color:white">🛍️ שופינג</div>
+        <div class="cat-chip" data-cat="food"      onclick="selectExpCat(this)">🍽️ אוכל</div>
+        <div class="cat-chip" data-cat="transport" onclick="selectExpCat(this)">🚌 תחבורה</div>
+        <div class="cat-chip" data-cat="other"     onclick="selectExpCat(this)">📦 אחר</div>
       </div>
       <label class="form-label">פירוט</label>
       <textarea class="form-textarea" id="expDesc" placeholder="תיאור ההוצאה..." rows="2" style="resize:none"></textarea>
@@ -123,40 +153,20 @@
       <div style="height:12px"></div>
       <button class="add-expense-btn" onclick="addExpense()">✅ הוסף הוצאה</button>
     </div>
-
     <div class="section-title" style="margin-bottom:12px">📋 רשימת הוצאות</div>
     <div id="expensesList"></div>
   </div>
 
-  <!-- ═══ PAGE: מפה ═══ -->
+  <!-- ══ PAGE: מפה ════════════════════════════════════════════ -->
   <div id="pageMap" class="page" style="padding-bottom:80px">
     <div class="page-header">🗺️ מפה</div>
     <div class="page-subheader">מלון Faliro 8 – אתונה</div>
     <div id="mapContainer">
-      <iframe src="https://maps.google.com/maps?q=Faliro+8+Athens+Greece&output=embed&z=14&hl=iw"
-        allowfullscreen loading="lazy"></iframe>
+      <iframe src="https://maps.google.com/maps?q=Faliro+8+Athens+Greece&output=embed&z=14&hl=iw" allowfullscreen loading="lazy"></iframe>
     </div>
   </div>
 
-  <!-- ═══ PAGE: מסעדות ═══ -->
-  <div id="pageRestaurants" class="page">
-    <div class="page-header">🍽️ מסעדות</div>
-    <div class="page-subheader">רשימת המסעדות לטיול</div>
-
-    <!-- Filter + Sort row -->
-    <div class="rest-toolbar">
-      <div class="rest-cat-filter" id="restCatFilter"></div>
-      <button class="proximity-btn" onclick="sortByProximity()">📍 דרג לפי קרבה</button>
-    </div>
-
-    <div id="restaurantsList"></div>
-
-    <div id="adminRestAddBtn" style="display:none;margin-top:8px">
-      <button class="add-btn" onclick="openAddRestModal()">➕ הוסף מסעדה</button>
-    </div>
-  </div>
-
-  <!-- ═══ PAGE: צ'אט AI ═══ -->
+  <!-- ══ PAGE: צ'אט AI ════════════════════════════════════════ -->
   <div id="pageChat" class="page">
     <div class="chat-wrapper">
       <div class="chat-header">
@@ -164,14 +174,12 @@
           <div class="page-header" style="margin-bottom:2px">💬 מדריך AI</div>
           <div class="page-subheader" style="margin-bottom:0">שאלו על יוון – מקומות, שעות, טיפים</div>
         </div>
-        <button class="chat-clear-btn" onclick="clearChat()">🗑️ נקה שיחה</button>
+        <button class="chat-clear-btn" onclick="clearChat()">🗑️ נקה</button>
       </div>
-
       <div class="chat-messages" id="chatMessages"></div>
-
       <div>
         <div class="chat-input-row">
-          <textarea class="chat-input" id="chatInput" placeholder="שאלו אותי על יוון... (Enter לשליחה)" rows="1"></textarea>
+          <textarea class="chat-input" id="chatInput" placeholder="שאלו אותי על יוון..." rows="1"></textarea>
           <button class="chat-send-btn" id="chatSendBtn" onclick="sendChatMessage()">➤</button>
         </div>
         <div class="chat-hint">Shift+Enter לשורה חדשה</div>
@@ -179,28 +187,36 @@
     </div>
   </div>
 
-  <!-- Bottom Navigation -->
+  <!-- ══ BOTTOM NAV ════════════════════════════════════════════ -->
+  <!-- scroll wrapper so 8 tabs fit -->
   <nav class="bottom-nav">
     <button class="nav-item active" onclick="showPage('summary',this)">
-      <span class="nav-icon">🏠</span>בית
+      <span class="nav-icon">🏠</span><span class="nav-label">בית</span>
     </button>
     <button class="nav-item" onclick="showPage('itinerary',this)">
-      <span class="nav-icon">📍</span>מסלול
+      <span class="nav-icon">📅</span><span class="nav-label">מסלול</span>
     </button>
-    <button class="nav-item" onclick="showPage('expenses',this)">
-      <span class="nav-icon">💰</span>הוצאות
-    </button>
-    <button class="nav-item" onclick="showPage('map',this)">
-      <span class="nav-icon">🗺️</span>מפה
+    <button class="nav-item" onclick="showPage('attractions',this)">
+      <span class="nav-icon">🏛️</span><span class="nav-label">אטרקציות</span>
     </button>
     <button class="nav-item" onclick="showPage('restaurants',this)">
-      <span class="nav-icon">🍽️</span>מסעדות
+      <span class="nav-icon">🍽️</span><span class="nav-label">מסעדות</span>
+    </button>
+    <button class="nav-item" onclick="showPage('shopping',this)">
+      <span class="nav-icon">🛍️</span><span class="nav-label">קניות</span>
+    </button>
+    <button class="nav-item" onclick="showPage('expenses',this)">
+      <span class="nav-icon">💰</span><span class="nav-label">הוצאות</span>
+    </button>
+    <button class="nav-item" onclick="showPage('map',this)">
+      <span class="nav-icon">🗺️</span><span class="nav-label">מפה</span>
     </button>
     <button class="nav-item" onclick="showPage('chat',this)">
-      <span class="nav-icon">💬</span>מדריך
+      <span class="nav-icon">💬</span><span class="nav-label">AI</span>
     </button>
   </nav>
-</div>
+
+</div><!-- /#app -->
 
 <!-- Modal -->
 <div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
@@ -212,9 +228,7 @@
   </div>
 </div>
 
-<!-- Toast -->
 <div class="toast" id="toast"></div>
-
 <script src="app.js"></script>
 </body>
 </html>
