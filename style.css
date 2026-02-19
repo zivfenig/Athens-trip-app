@@ -388,3 +388,55 @@ body {
 .toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
 
 select option { background:#1a2e50; }
+
+/* ── RESTAURANTS ───────────────────────────────────────────── */
+.rest-toolbar {
+  display:flex; flex-direction:column; gap:10px; margin-bottom:16px;
+}
+.rest-cat-filter {
+  display:flex; gap:8px; overflow-x:auto; padding-bottom:4px; scrollbar-width:none;
+}
+.rest-cat-filter::-webkit-scrollbar { display:none; }
+.rest-chip {
+  flex-shrink:0; padding:7px 14px; border-radius:20px;
+  border:1px solid var(--border); background:var(--surface); color:var(--text-dim);
+  font-family:'Heebo',sans-serif; font-size:13px; font-weight:500;
+  cursor:pointer; transition:all .2s; white-space:nowrap;
+  -webkit-tap-highlight-color:transparent;
+}
+.rest-chip.active { background:var(--blue); border-color:var(--blue); color:white; font-weight:700; }
+.rest-chip-edit  { background:rgba(212,168,67,.1); border-color:rgba(212,168,67,.3); color:var(--gold); }
+.proximity-btn {
+  width:100%; background:linear-gradient(135deg,rgba(45,212,160,.2),rgba(26,111,181,.15));
+  border:1px solid rgba(45,212,160,.4); color:var(--green);
+  border-radius:12px; padding:12px; font-family:'Heebo',sans-serif;
+  font-size:14px; font-weight:700; cursor:pointer;
+  display:flex; align-items:center; justify-content:center; gap:8px;
+  transition:transform .15s; -webkit-tap-highlight-color:transparent;
+}
+.proximity-btn:active { transform:scale(.97); }
+
+.rest-card {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--radius); padding:16px; margin-bottom:12px;
+  position:relative; overflow:hidden;
+}
+.rest-card::before {
+  content:''; position:absolute; right:0; top:0; bottom:0; width:3px;
+  background:linear-gradient(180deg,var(--gold),#a07020);
+}
+.rest-rank {
+  position:absolute; left:14px; top:14px;
+  background:linear-gradient(135deg,var(--gold),#a07020); color:#000;
+  width:26px; height:26px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  font-size:12px; font-weight:900;
+}
+.rest-cat-badge {
+  display:inline-flex; align-items:center; gap:4px;
+  padding:3px 10px; border-radius:20px; border:1px solid;
+  font-size:11px; font-weight:600; margin-bottom:6px;
+}
+.rest-name { font-size:17px; font-weight:700; margin-bottom:4px; padding-left:36px; }
+.rest-desc { font-size:13px; color:var(--text-dim); margin-bottom:6px; line-height:1.5; }
+.rest-meta { font-size:12px; color:var(--text-dim); margin-bottom:0; line-height:1.8; }
