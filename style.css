@@ -259,3 +259,19 @@ select option{ background:#1a2e50; }
   background: linear-gradient(135deg,#33ccff,#0099cc);
   color: white;
 }
+
+/* ── ADD PLACE INSTRUCTIONS ─────────────────────────────────── */
+.pf-instructions {
+  background: rgba(58,159,216,.07);
+  border: 1px solid rgba(58,159,216,.2);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+}
+.pf-instruction-step {
+  font-size: 13px; color: var(--text); line-height: 1.9;
+}
+.pf-instruction-note {
+  font-size: 12px; color: var(--orange); margin-top: 4px;
+  padding-top: 6px; border-top: 1px solid rgba(245,135,74,.2);
+}
