@@ -293,6 +293,8 @@ function renderPlacePage(page) {
   // ── render list
   const listEl=document.getElementById(page+'List');
   if(!listEl) return;
+  const adminAdd=document.getElementById(page+'AdminAdd');
+  if(adminAdd) adminAdd.style.display=isAdmin?'block':'none';
   if(!filtered.length){ listEl.innerHTML='<div style="text-align:center;color:var(--text-dim);padding:40px;font-size:14px">אין פריטים בקטגוריה זו</div>'; return; }
 
   listEl.innerHTML=filtered.map((item,idx)=>{
@@ -315,9 +317,6 @@ function renderPlacePage(page) {
       </div>
     </div>`;
   }).join('');
-
-  const adminAdd=document.getElementById(page+'AdminAdd');
-  if(adminAdd) adminAdd.style.display=isAdmin?'block':'none';
 }
 
 function setCatFilter(page,catId) { activeCatFilter[page]=catId; sortedByProx[page]=false; renderPlacePage(page); }
