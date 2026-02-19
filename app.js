@@ -14,7 +14,7 @@ const EUR_TO_ILS_FALLBACK = 3.9;
 const HF_BASE_URL = 'https://router.huggingface.co/v1';
 const HF_MODEL    = 'openai/gpt-oss-120b:groq';
 // ⬇️  הכנס כאן את ה-HF Token שלך (או הזן דרך ממשק 🔑)
-const HF_TOKEN_HARDCODED = 'YOUR_HF_TOKEN_HERE';
+const HF_TOKEN_HARDCODED = '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';
 
 const CAT_CONFIG = {
   shopping: { label: 'שופינג',  emoji: '🛍️', color: '#9b72f0' },
@@ -37,7 +37,7 @@ let chatHistory      = [];   // full multi-turn history
 
 // ─── HF API ──────────────────────────────────────────────────
 function getHfToken() {
-  return HF_TOKEN_HARDCODED !== 'YOUR_HF_TOKEN_HERE'
+  return HF_TOKEN_HARDCODED !== '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'
     ? HF_TOKEN_HARDCODED
     : (localStorage.getItem('hf_token') || '');
 }
