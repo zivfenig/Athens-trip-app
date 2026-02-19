@@ -14,7 +14,7 @@ const EUR_TO_ILS_FALLBACK = 3.9;
 const HF_BASE_URL = 'https://router.huggingface.co/v1';
 const HF_MODEL    = 'openai/gpt-oss-120b:groq';
 // ⬇️  הכנס כאן את ה-HF Token שלך (או הזן דרך ממשק 🔑)
-const HF_TOKEN_HARDCODED = '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';
+const HF_TOKEN_HARDCODED = 'YOUR_HF_TOKEN_HERE';
 
 const CAT_CONFIG = {
   shopping: { label: 'שופינג',  emoji: '🛍️', color: '#9b72f0' },
@@ -37,7 +37,7 @@ let chatHistory      = [];   // full multi-turn history
 
 // ─── HF API ──────────────────────────────────────────────────
 function getHfToken() {
-  return HF_TOKEN_HARDCODED !== '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'
+  return HF_TOKEN_HARDCODED !== 'YOUR_HF_TOKEN_HERE'
     ? HF_TOKEN_HARDCODED
     : (localStorage.getItem('hf_token') || '');
 }
@@ -192,8 +192,9 @@ function showPage(name, btn) {
   document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
   document.getElementById('page' + name.charAt(0).toUpperCase() + name.slice(1)).classList.add('active');
   if (btn) btn.classList.add('active');
-  if (name === 'itinerary') renderItinerary();
-  if (name === 'expenses')  { renderExpenses(); updateExpenseSummary(); }
+  if (name === 'itinerary')   renderItinerary();
+  if (name === 'expenses')    { renderExpenses(); updateExpenseSummary(); }
+  if (name === 'restaurants') renderRestaurants();
 }
 
 // ─── INIT ─────────────────────────────────────────────────────
@@ -204,6 +205,7 @@ function initApp() {
   renderExpenses();
   updateExpenseSummary();
   updateKeyStatus();
+  renderRestaurants();
 }
 
 // ─── SUMMARY ─────────────────────────────────────────────────
@@ -534,3 +536,305 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   clearChat();
 });
+
+// ═══════════════════════════════════════════════════════════════
+//  RESTAURANTS
+// ═══════════════════════════════════════════════════════════════
+
+// ─── DEFAULT CATEGORIES & RESTAURANTS ────────────────────────
+const defaultRestCategories = [
+  { id:'greek',    name:'יוונית מסורתית', emoji:'🏛️', color:'#3a9fd8' },
+  { id:'seafood',  name:'פירות ים',       emoji:'🦞', color:'#2dd4a0' },
+  { id:'italian',  name:'איטלקית',        emoji:'🍕', color:'#f5874a' },
+  { id:'bar',      name:'ברים וקוקטיילים',emoji:'🍹', color:'#9b72f0' },
+  { id:'cafe',     name:'קפה וארוחות בוקר',emoji:'☕', color:'#d4a843' },
+  { id:'street',   name:'אוכל רחוב',      emoji:'🥙', color:'#e85555' }
+];
+
+const defaultRestaurants = [
+  { id:101, name:'Tzitzikas & Mermigas', catId:'greek',
+    desc:'מסעדת מεζεδοπωλείο קלאסית – מנות קטנות ואווירה יוונית אותנטית',
+    address:'Mitropoleos 12-14, Athens', lat:37.9755, lng:23.7310,
+    hours:'12:00-00:00', notes:'מומלץ להזמין מקום מראש' },
+  { id:102, name:'Varoulko Seaside', catId:'seafood',
+    desc:'מסעדת שף פרס מישלן – פירות ים ייחודיים עם נוף לים', 
+    address:'Akti Koumoundourou 52, Mikrolimano', lat:37.9494, lng:23.6448,
+    hours:'13:00-23:30', notes:'יקרה אך חוויה בלתי נשכחת' },
+  { id:103, name:'Feyrouz', catId:'street',
+    desc:'המסעדה הלבנונית הטובה באתונה – פלאפל ושווארמה מעולים',
+    address:'Mitropoleos 23, Athens', lat:37.9758, lng:23.7287,
+    hours:'11:00-23:00', notes:'תור קצר בשעות שיא' },
+  { id:104, name:'The Clumsies', catId:'bar',
+    desc:'ברקוקטיילים ידוע עולמית – כלול ב-50 הברים הטובים בעולם',
+    address:'Praxitelous 30, Athens', lat:37.9772, lng:23.7271,
+    hours:'10:00-03:00', notes:'נסו את הקוקטייל הקלאסי שלהם' },
+  { id:105, name:'Lukumades', catId:'street',
+    desc:'לוקומדס – סופגניות יווניות חמות עם דבש ואגוזים',
+    address:'Aiolou 4, Athens', lat:37.9780, lng:23.7264,
+    hours:'09:00-21:00', notes:'חובה לנסות!' },
+  { id:106, name:'Melina Cafe', catId:'cafe',
+    desc:'קפה בסגנון ביסטרו בפלאקה עם נוף לאקרופוליס',
+    address:'Lyssiou 22, Plaka', lat:37.9735, lng:23.7302,
+    hours:'08:00-22:00', notes:'ארוחת בוקר מדהימה' }
+];
+
+// ─── STORAGE ─────────────────────────────────────────────────
+function getRestaurants()    { const s=localStorage.getItem('trip_restaurants');   return s?JSON.parse(s):defaultRestaurants; }
+function saveRestaurants(d)  { localStorage.setItem('trip_restaurants', JSON.stringify(d)); }
+function getRestCategories() { const s=localStorage.getItem('trip_rest_cats');     return s?JSON.parse(s):defaultRestCategories; }
+function saveRestCategories(d){ localStorage.setItem('trip_rest_cats', JSON.stringify(d)); }
+
+// ─── STATE ───────────────────────────────────────────────────
+let activeRestCat    = 'all';   // 'all' or catId
+let restSortedByProx = false;
+let editingRestId    = null;
+let editingCatId     = null;
+
+// ─── RENDER ──────────────────────────────────────────────────
+function renderRestaurants() {
+  const cats = getRestCategories();
+  const all  = getRestaurants();
+
+  // Build category filter chips
+  const filterEl = document.getElementById('restCatFilter');
+  if (filterEl) {
+    filterEl.innerHTML =
+      `<button class="rest-chip ${activeRestCat==='all'?'active':''}" onclick="setRestCat('all')">🍽️ הכל</button>` +
+      cats.map(c =>
+        `<button class="rest-chip ${activeRestCat===c.id?'active':''}"
+          style="${activeRestCat===c.id?`background:${c.color};border-color:${c.color}`:''}"
+          onclick="setRestCat('${c.id}')">${c.emoji} ${c.name}</button>`
+      ).join('') +
+      (isAdmin ? `<button class="rest-chip rest-chip-edit" onclick="openCatManagerModal()">⚙️ ערוך קטגוריות</button>` : '');
+  }
+
+  // Filter
+  let filtered = activeRestCat==='all' ? [...all] : all.filter(r=>r.catId===activeRestCat);
+
+  // Sort by proximity if active
+  if (restSortedByProx && filtered.length > 0) {
+    const btn = document.querySelector('.proximity-btn');
+    // use last known coords stored in state
+    const lat = window._userLat || HOTEL_LAT;
+    const lng = window._userLng || HOTEL_LNG;
+    filtered.sort((a,b) => Math.hypot(a.lat-lat,a.lng-lng) - Math.hypot(b.lat-lat,b.lng-lng));
+    if (btn) btn.innerHTML = '📍 ממוין לפי קרבה ✓';
+  } else {
+    const btn = document.querySelector('.proximity-btn');
+    if (btn) btn.innerHTML = '📍 דרג לפי קרבה';
+  }
+
+  const list = document.getElementById('restaurantsList');
+  if (!list) return;
+  if (!filtered.length) { list.innerHTML = '<div style="text-align:center;color:var(--text-dim);padding:40px;font-size:14px">אין מסעדות בקטגוריה זו</div>'; return; }
+
+  list.innerHTML = filtered.map((r, idx) => {
+    const cat = cats.find(c=>c.id===r.catId) || { emoji:'🍽️', name:'כללי', color:'#8ba0c0' };
+    const distLabel = (restSortedByProx && window._userLat)
+      ? `<span style="font-size:11px;color:var(--green);margin-right:6px">📍 ${distKm(r.lat,r.lng,window._userLat,window._userLng)}</span>`
+      : '';
+    const adminBtns = isAdmin
+      ? `<button class="attr-btn btn-edit" onclick="openEditRestModal(${r.id})">✏️ עריכה</button>
+         <button class="attr-btn btn-delete" onclick="deleteRest(${r.id})">🗑️</button>`
+      : '';
+    return `<div class="rest-card">
+      <div class="rest-rank">${idx+1}</div>
+      <div class="rest-cat-badge" style="background:${cat.color}20;border-color:${cat.color}40;color:${cat.color}">${cat.emoji} ${cat.name}</div>
+      <div class="rest-name">${r.name}</div>
+      <div class="rest-desc">${r.desc}</div>
+      <div class="rest-meta">
+        🕐 ${r.hours || 'שעות לא ידועות'}
+        ${r.notes ? `<span style="margin-right:10px">💡 ${r.notes}</span>` : ''}
+        ${distLabel}
+      </div>
+      <div class="attr-actions" style="margin-top:12px">
+        <a class="attr-btn btn-nav"
+           href="https://www.google.com/maps/dir/?api=1&destination=${r.lat},${r.lng}&travelmode=walking"
+           target="_blank">🧭 נווט אליי</a>
+        <button class="attr-btn btn-info" onclick="showRestInfo(${r.id})">ℹ️ מידע</button>
+        ${adminBtns}
+      </div>
+    </div>`;
+  }).join('');
+
+  // Show/hide admin add button
+  const adminAdd = document.getElementById('adminRestAddBtn');
+  if (adminAdd) adminAdd.style.display = isAdmin ? 'block' : 'none';
+}
+
+function distKm(lat1,lng1,lat2,lng2) {
+  const R=6371, dLat=(lat2-lat1)*Math.PI/180, dLng=(lng2-lng1)*Math.PI/180;
+  const a=Math.sin(dLat/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
+  const d=R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+  return d<1 ? Math.round(d*1000)+'מ׳' : d.toFixed(1)+'ק"מ';
+}
+
+function setRestCat(id) { activeRestCat=id; restSortedByProx=false; renderRestaurants(); }
+
+function sortByProximity() {
+  if (restSortedByProx) { restSortedByProx=false; renderRestaurants(); return; }
+  if (!navigator.geolocation) { showToast('⚠️ המכשיר לא תומך במיקום'); return; }
+  showToast('📍 מאתר מיקום...');
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      window._userLat = pos.coords.latitude;
+      window._userLng = pos.coords.longitude;
+      restSortedByProx = true;
+      renderRestaurants();
+      showToast('✅ ממויין לפי קרבה!');
+    },
+    () => {
+      showToast('⚠️ לא ניתן לקבל מיקום – ממיין ממלון');
+      window._userLat = HOTEL_LAT; window._userLng = HOTEL_LNG;
+      restSortedByProx = true;
+      renderRestaurants();
+    }
+  );
+}
+
+// ─── INFO MODAL (Google Maps embed) ──────────────────────────
+function showRestInfo(id) {
+  const r = getRestaurants().find(x=>x.id===id); if(!r) return;
+  const cats = getRestCategories();
+  const cat  = cats.find(c=>c.id===r.catId) || { emoji:'🍽️', name:'כללי' };
+  document.getElementById('modalTitle').textContent = r.name;
+  document.getElementById('modalContent').innerHTML = `
+    <div class="modal-body">
+      <h4>📍 כתובת</h4><p>${r.address}</p>
+      <h4>🕐 שעות פתיחה</h4><p>${r.hours||'לא ידוע'}</p>
+      <h4>📂 קטגוריה</h4><p>${cat.emoji} ${cat.name}</p>
+      <h4>📝 תיאור</h4><p>${r.desc}</p>
+      ${r.notes?`<h4>💡 הערות</h4><p>${r.notes}</p>`:''}
+      <h4>🗺️ מיקום בגוגל מפס</h4>
+      <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(r.name+' '+r.address)}" 
+         target="_blank" style="color:var(--blue-light);text-decoration:none">פתח בגוגל מפס ↗</a>
+    </div>
+    <iframe 
+      src="https://maps.google.com/maps?q=${encodeURIComponent(r.name+' '+r.address)}&output=embed&z=16&hl=iw"
+      style="width:100%;height:220px;border:none;border-radius:12px;margin-top:16px">
+    </iframe>`;
+  openModal();
+}
+
+// ─── ADD / EDIT RESTAURANT ────────────────────────────────────
+function openAddRestModal() {
+  editingRestId = null;
+  document.getElementById('modalTitle').textContent = '➕ הוסף מסעדה';
+  document.getElementById('modalContent').innerHTML = restForm({});
+  openModal();
+}
+function openEditRestModal(id) {
+  editingRestId = id;
+  const r = getRestaurants().find(x=>x.id===id);
+  document.getElementById('modalTitle').textContent = '✏️ עריכת מסעדה';
+  document.getElementById('modalContent').innerHTML = restForm(r);
+  openModal();
+}
+function restForm(r) {
+  const cats = getRestCategories();
+  return `
+    <label class="form-label">שם המסעדה</label>
+    <input class="form-input" id="rf_name" value="${r.name||''}" placeholder="שם...">
+    <label class="form-label">תיאור</label>
+    <textarea class="form-textarea" id="rf_desc" rows="2" style="resize:none">${r.desc||''}</textarea>
+    <label class="form-label">קטגוריה</label>
+    <select class="form-select" id="rf_cat">
+      ${cats.map(c=>`<option value="${c.id}" ${r.catId===c.id?'selected':''}>${c.emoji} ${c.name}</option>`).join('')}
+    </select>
+    <label class="form-label">כתובת</label>
+    <input class="form-input" id="rf_address" value="${r.address||''}" placeholder="Athens, Greece">
+    <label class="form-label">Latitude</label>
+    <input class="form-input" id="rf_lat" value="${r.lat||''}" type="number" step="any" placeholder="37.97...">
+    <label class="form-label">Longitude</label>
+    <input class="form-input" id="rf_lng" value="${r.lng||''}" type="number" step="any" placeholder="23.72...">
+    <label class="form-label">שעות פתיחה</label>
+    <input class="form-input" id="rf_hours" value="${r.hours||''}" placeholder="12:00-23:00">
+    <label class="form-label">הערות</label>
+    <input class="form-input" id="rf_notes" value="${r.notes||''}" placeholder="טיפ, מחיר, המלצה...">
+    <button class="save-btn" onclick="saveRest()">💾 שמור</button>`;
+}
+function saveRest() {
+  const name = document.getElementById('rf_name').value.trim();
+  if (!name) { showToast('⚠️ הכניסו שם'); return; }
+  let all = getRestaurants();
+  const data = {
+    name, desc: document.getElementById('rf_desc').value,
+    catId: document.getElementById('rf_cat').value,
+    address: document.getElementById('rf_address').value,
+    lat: parseFloat(document.getElementById('rf_lat').value)||37.97,
+    lng: parseFloat(document.getElementById('rf_lng').value)||23.72,
+    hours: document.getElementById('rf_hours').value,
+    notes: document.getElementById('rf_notes').value
+  };
+  if (editingRestId) {
+    const idx=all.findIndex(r=>r.id===editingRestId); if(idx>=0) all[idx]={...all[idx],...data};
+  } else {
+    data.id=Date.now(); all.push(data);
+  }
+  saveRestaurants(all); closeModalDirect(); renderRestaurants(); showToast('✅ מסעדה נשמרה!');
+}
+function deleteRest(id) {
+  if(!confirm('למחוק מסעדה זו?'))return;
+  saveRestaurants(getRestaurants().filter(r=>r.id!==id));
+  renderRestaurants(); showToast('🗑️ נמחק');
+}
+
+// ─── CATEGORY MANAGER (admin only) ───────────────────────────
+function openCatManagerModal() {
+  document.getElementById('modalTitle').textContent = '⚙️ ניהול קטגוריות';
+  renderCatManagerContent();
+  openModal();
+}
+function renderCatManagerContent() {
+  const cats = getRestCategories();
+  document.getElementById('modalContent').innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px">
+      ${cats.map(c=>`
+        <div style="display:flex;align-items:center;gap:10px;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:10px">
+          <span style="font-size:20px">${c.emoji}</span>
+          <span style="flex:1;font-size:14px;font-weight:600">${c.name}</span>
+          <button onclick="openEditCatModal('${c.id}')" style="background:rgba(212,168,67,.15);border:1px solid rgba(212,168,67,.3);color:var(--gold);border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer;font-family:'Heebo',sans-serif">✏️ ערוך</button>
+          <button onclick="deleteCat('${c.id}')" style="background:rgba(232,85,85,.1);border:1px solid rgba(232,85,85,.3);color:var(--red);border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer;font-family:'Heebo',sans-serif">🗑️</button>
+        </div>`).join('')}
+    </div>
+    <button class="add-btn" style="margin-bottom:0" onclick="openAddCatModal()">➕ הוסף קטגוריה</button>`;
+}
+function openAddCatModal() {
+  editingCatId=null;
+  document.getElementById('modalTitle').textContent='➕ קטגוריה חדשה';
+  document.getElementById('modalContent').innerHTML=catForm({});
+}
+function openEditCatModal(id) {
+  editingCatId=id;
+  const cat=getRestCategories().find(c=>c.id===id);
+  document.getElementById('modalTitle').textContent='✏️ עריכת קטגוריה';
+  document.getElementById('modalContent').innerHTML=catForm(cat);
+}
+function catForm(c) {
+  return `
+    <label class="form-label">שם קטגוריה</label>
+    <input class="form-input" id="cf_name" value="${c.name||''}" placeholder="למשל: יוונית מסורתית">
+    <label class="form-label">אמוג'י</label>
+    <input class="form-input" id="cf_emoji" value="${c.emoji||'🍽️'}" placeholder="🍽️">
+    <label class="form-label">צבע (hex)</label>
+    <input class="form-input" id="cf_color" value="${c.color||'#3a9fd8'}" placeholder="#3a9fd8">
+    <button class="save-btn" onclick="saveCat()">💾 שמור קטגוריה</button>
+    <button onclick="openCatManagerModal()" style="width:100%;margin-top:8px;background:none;border:1px solid var(--border);color:var(--text-dim);border-radius:12px;padding:12px;font-family:'Heebo',sans-serif;font-size:14px;cursor:pointer;">← חזור לרשימה</button>`;
+}
+function saveCat() {
+  const name=document.getElementById('cf_name').value.trim();
+  if(!name){showToast('⚠️ הכניסו שם');return;}
+  let cats=getRestCategories();
+  const data={name, emoji:document.getElementById('cf_emoji').value||'🍽️', color:document.getElementById('cf_color').value||'#3a9fd8'};
+  if(editingCatId){
+    const idx=cats.findIndex(c=>c.id===editingCatId); if(idx>=0) cats[idx]={...cats[idx],...data};
+  } else {
+    data.id='cat_'+Date.now(); cats.push(data);
+  }
+  saveRestCategories(cats); openCatManagerModal(); showToast('✅ קטגוריה נשמרה!');
+}
+function deleteCat(id) {
+  if(!confirm('למחוק קטגוריה זו?'))return;
+  saveRestCategories(getRestCategories().filter(c=>c.id!==id));
+  renderCatManagerContent(); renderRestaurants(); showToast('🗑️ קטגוריה נמחקה');
+}
