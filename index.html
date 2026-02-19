@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>🏛️ טיול יוון 2025</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════
+     LOGIN
+═══════════════════════════════════════════ -->
+<div id="loginScreen">
+  <div class="login-card">
+    <div class="login-logo">🏛️</div>
+    <div class="login-title">טיול יוון 2025</div>
+    <div class="login-sub">הכניסו שם משתמש כדי להיכנס</div>
+    <input class="login-input" id="usernameInput" type="text" placeholder="שם משתמש..." autocomplete="off">
+    <button class="login-btn" onclick="doLogin()">כניסה לאפליקציה ✈️</button>
+    <div class="login-error" id="loginError"></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     APP
+═══════════════════════════════════════════ -->
+<div id="app">
+
+  <!-- Top Bar -->
+  <div class="top-bar">
+    <div class="top-bar-title">🏛️ יוון 2025</div>
+    <div class="top-bar-right">
+      <button id="keyStatusBtn" class="key-status-btn" onclick="showKeyModal()">🔑 הגדר Token</button>
+      <span class="top-bar-user" id="topBarUser"></span>
+      <span class="admin-badge" id="adminBadgeTop" style="display:none">מנהל</span>
+      <button class="logout-btn" onclick="doLogout()">יציאה</button>
+    </div>
+  </div>
+
+  <!-- ═══ PAGE: בית ═══ -->
+  <div id="pageSummary" class="page active">
+    <div class="expense-summary">
+      <div class="expense-summary-title">📊 סיכום הוצאות מהיר</div>
+      <div class="total-amount" id="summaryTotal">₪0</div>
+      <div class="total-label">סה"כ הוצאות</div>
+      <div class="cat-bars" id="summaryBars"></div>
+    </div>
+    <div class="trip-hero">
+      <div class="trip-hero-emoji">⛵</div>
+      <div class="trip-hero-title">ברוכים הבאים ליוון!</div>
+      <div class="trip-hero-sub">Faliro 8, Athens – בסיס המלון שלנו</div>
+      <div class="trip-stats">
+        <div class="trip-stat"><div class="trip-stat-num">4</div><div class="trip-stat-label">ימים</div></div>
+        <div class="trip-stat"><div class="trip-stat-num" id="statAttrs">0</div><div class="trip-stat-label">אטרקציות</div></div>
+        <div class="trip-stat"><div class="trip-stat-num" id="statExpenses">0</div><div class="trip-stat-label">הוצאות</div></div>
+      </div>
+    </div>
+    <div class="section-title">📅 ימי הטיול</div>
+    <div id="summaryDaysList"></div>
+  </div>
+
+  <!-- ═══ PAGE: מסלול ═══ -->
+  <div id="pageItinerary" class="page">
+    <div class="page-header">📍 מסלול יומי</div>
+    <div class="page-subheader">סדר האטרקציות מחושב לפי מיקום מהמלון</div>
+    <div class="day-tabs" id="dayTabs"></div>
+    <button class="optimize-btn" onclick="optimizeDay()">🧭 סדר אטרקציות חכם לפי מיקום</button>
+    <div id="attractionsList"></div>
+    <div id="adminAddBtn" style="display:none;margin-top:8px">
+      <button class="add-btn" onclick="openAddAttrModal()">➕ הוסף אטרקציה</button>
+    </div>
+  </div>
+
+  <!-- ═══ PAGE: הוצאות ═══ -->
+  <div id="pageExpenses" class="page">
+    <div class="page-header">💰 הוצאות</div>
+    <div class="page-subheader">מעקב הוצאות לטיול</div>
+
+    <div class="rate-tag" id="rateTag">⏳ טוען שער יורו...</div>
+
+    <div class="expense-summary">
+      <div class="expense-summary-title">📊 חלוקה לפי קטגוריה</div>
+      <div class="total-amount" id="summaryTotal2">₪0</div>
+      <div class="total-label">סה"כ בשקלים</div>
+      <div class="cat-bars" id="summaryBars2"></div>
+    </div>
+
+    <div class="exp-action-row">
+      <button class="convert-btn" id="convertBtn" onclick="toggleConversion()">💱 הצג הכל בשקלים</button>
+      <button class="csv-btn" onclick="exportCSV()">📥 ייצא CSV</button>
+    </div>
+
+    <button class="ai-analyze-btn" onclick="analyzeExpenses()">🤖 ניתוח AI – המלצות חיסכון</button>
+    <div id="aiExpenseResult" style="display:none"></div>
+
+    <div class="expense-form-card">
+      <div class="section-title" style="font-size:16px;margin-bottom:14px">הוסף הוצאה</div>
+      <label class="form-label">קטגוריה</label>
+      <div class="cat-chips" id="expCatChips">
+        <div class="cat-chip active" data-cat="shopping" onclick="selectCat(this)" style="background:#9b72f0;border-color:#9b72f0;color:white">🛍️ שופינג</div>
+        <div class="cat-chip" data-cat="food"     onclick="selectCat(this)">🍽️ אוכל</div>
+        <div class="cat-chip" data-cat="transport" onclick="selectCat(this)">🚌 תחבורה</div>
+        <div class="cat-chip" data-cat="other"    onclick="selectCat(this)">📦 אחר</div>
+      </div>
+      <label class="form-label">פירוט</label>
+      <textarea class="form-textarea" id="expDesc" placeholder="תיאור ההוצאה..." rows="2" style="resize:none"></textarea>
+      <div class="form-row">
+        <div>
+          <label class="form-label">סכום</label>
+          <input class="form-input" id="expAmount" type="number" placeholder="0" style="margin-bottom:0">
+        </div>
+        <div>
+          <label class="form-label">מטבע</label>
+          <div class="currency-toggle" style="margin-bottom:0">
+            <button class="currency-btn active" id="btnILS" onclick="selectCurrency('ILS')">₪ שקל</button>
+            <button class="currency-btn" id="btnEUR" onclick="selectCurrency('EUR')">€ יורו</button>
+          </div>
+        </div>
+      </div>
+      <div style="height:12px"></div>
+      <button class="add-expense-btn" onclick="addExpense()">✅ הוסף הוצאה</button>
+    </div>
+
+    <div class="section-title" style="margin-bottom:12px">📋 רשימת הוצאות</div>
+    <div id="expensesList"></div>
+  </div>
+
+  <!-- ═══ PAGE: מפה ═══ -->
+  <div id="pageMap" class="page" style="padding-bottom:80px">
+    <div class="page-header">🗺️ מפה</div>
+    <div class="page-subheader">מלון Faliro 8 – אתונה</div>
+    <div id="mapContainer">
+      <iframe src="https://maps.google.com/maps?q=Faliro+8+Athens+Greece&output=embed&z=14&hl=iw"
+        allowfullscreen loading="lazy"></iframe>
+    </div>
+  </div>
+
+  <!-- ═══ PAGE: צ'אט AI ═══ -->
+  <div id="pageChat" class="page">
+    <div class="chat-wrapper">
+      <div class="chat-header">
+        <div>
+          <div class="page-header" style="margin-bottom:2px">💬 מדריך AI</div>
+          <div class="page-subheader" style="margin-bottom:0">שאלו על יוון – מקומות, שעות, טיפים</div>
+        </div>
+        <button class="chat-clear-btn" onclick="clearChat()">🗑️ נקה שיחה</button>
+      </div>
+
+      <div class="chat-messages" id="chatMessages"></div>
+
+      <div>
+        <div class="chat-input-row">
+          <textarea class="chat-input" id="chatInput" placeholder="שאלו אותי על יוון... (Enter לשליחה)" rows="1"></textarea>
+          <button class="chat-send-btn" id="chatSendBtn" onclick="sendChatMessage()">➤</button>
+        </div>
+        <div class="chat-hint">Shift+Enter לשורה חדשה</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom Navigation -->
+  <nav class="bottom-nav">
+    <button class="nav-item active" onclick="showPage('summary',this)">
+      <span class="nav-icon">🏠</span>בית
+    </button>
+    <button class="nav-item" onclick="showPage('itinerary',this)">
+      <span class="nav-icon">📍</span>מסלול
+    </button>
+    <button class="nav-item" onclick="showPage('expenses',this)">
+      <span class="nav-icon">💰</span>הוצאות
+    </button>
+    <button class="nav-item" onclick="showPage('map',this)">
+      <span class="nav-icon">🗺️</span>מפה
+    </button>
+    <button class="nav-item" onclick="showPage('chat',this)">
+      <span class="nav-icon">💬</span>מדריך
+    </button>
+  </nav>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModalDirect()">✕</button>
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="modalTitle"></div>
+    <div id="modalContent"></div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
