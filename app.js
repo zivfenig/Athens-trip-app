@@ -417,18 +417,61 @@ function parseGMapsName(url) {
 }
 
 // ── Called on every keystroke/paste in the URL field ─────────
-function onUrlInput() {
+async function onUrlInput() {
   const url = document.getElementById('pf_url')?.value.trim() || '';
-  if (!url) return;
-  const coords = parseGMapsUrl(url);
   const statusEl = document.getElementById('pf_url_status');
+  if (!url) { if (statusEl) statusEl.innerHTML = ''; return; }
+
+  // Try to parse coords directly first (works for full desktop links)
+  const coords = parseGMapsUrl(url);
   if (coords) {
     const guessedName = parseGMapsName(url);
     _pfSetLocation(coords.lat, coords.lng, guessedName, '');
-    if (statusEl) statusEl.innerHTML = '<span style="color:var(--green)">✅ מיקום זוהה</span>';
-  } else {
-    if (statusEl) statusEl.innerHTML = '<span style="color:var(--orange)">⚠️ לא זוהה מיקום – נסו קישור שיתוף</span>';
+    if (statusEl) statusEl.innerHTML =
+      '<span style="color:var(--green)">✅ מיקום זוהה: ' + coords.lat.toFixed(5) + ', ' + coords.lng.toFixed(5) + '</span>';
+    return;
   }
+
+  // Short link (maps.app.goo.gl or goo.gl) — need to resolve redirect
+  const isShortLink = /goo\.gl\/|maps\.app\.goo\.gl/.test(url);
+  if (isShortLink) {
+    if (statusEl) statusEl.innerHTML = '<span style="color:var(--text-dim)">🔄 פותר קישור קצר...</span>';
+    try {
+      // Use a public CORS proxy to follow the redirect and get the final URL
+      const proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(url);
+      const res = await fetch(proxyUrl, { method: 'HEAD' });
+      const finalUrl = res.url; // after redirects
+      const coords2 = parseGMapsUrl(finalUrl);
+      if (coords2) {
+        const guessedName = parseGMapsName(finalUrl);
+        _pfSetLocation(coords2.lat, coords2.lng, guessedName, '');
+        if (statusEl) statusEl.innerHTML =
+          '<span style="color:var(--green)">✅ מיקום זוהה: ' + coords2.lat.toFixed(5) + ', ' + coords2.lng.toFixed(5) + '</span>';
+      } else {
+        // corsproxy might not give us final URL via HEAD, try GET + read body
+        const res2 = await fetch(proxyUrl);
+        const html  = await res2.text();
+        // Google embeds coords in the page as well
+        const coords3 = parseGMapsUrl(res2.url) || parseGMapsUrl(html);
+        if (coords3) {
+          const guessedName = parseGMapsName(res2.url) || parseGMapsName(html);
+          _pfSetLocation(coords3.lat, coords3.lng, guessedName, '');
+          if (statusEl) statusEl.innerHTML =
+            '<span style="color:var(--green)">✅ מיקום זוהה: ' + coords3.lat.toFixed(5) + ', ' + coords3.lng.toFixed(5) + '</span>';
+        } else {
+          if (statusEl) statusEl.innerHTML =
+            '<span style="color:var(--orange)">⚠️ לא הצלחנו לחלץ מיקום. נסו להעתיק קישור מלא מדפדפן (לא מהאפליקציה)</span>';
+        }
+      }
+    } catch(e) {
+      if (statusEl) statusEl.innerHTML =
+        '<span style="color:var(--orange)">⚠️ שגיאה בפתרון הקישור. נסו קישור מלא מדפדפן</span>';
+    }
+    return;
+  }
+
+  if (statusEl) statusEl.innerHTML =
+    '<span style="color:var(--orange)">⚠️ לא זוהו קואורדינטות – נסו קישור אחר</span>';
 }
 
 // ── Form HTML ─────────────────────────────────────────────────
@@ -439,16 +482,18 @@ function placeForm(page, item) {
     <!-- GOOGLE MAPS URL -->
     <div style="margin-bottom:16px">
       <label class="form-label">🔗 קישור מגוגל מפס</label>
-      <div style="font-size:12px;color:var(--text-dim);margin-bottom:8px;line-height:1.6">
-        בגוגל מפס: מצאו את המקום → לחצו שיתוף → העתק קישור → הדביקו כאן
+      <div class="pf-instructions">
+        <div class="pf-instruction-step">1️⃣ פתחו גוגל מפס ומצאו את המקום</div>
+        <div class="pf-instruction-step">2️⃣ לחצו <strong>שיתוף</strong> ← <strong>העתק קישור</strong></div>
+        <div class="pf-instruction-step">3️⃣ הדביקו כאן – גם קישור קצר (goo.gl) עובד ✅</div>
       </div>
       <input class="form-input" id="pf_url"
-        placeholder="https://maps.app.goo.gl/... או https://www.google.com/maps/..."
+        placeholder="https://www.google.com/maps/place/..."
         style="direction:ltr;text-align:left;font-size:13px"
         oninput="onUrlInput()" onpaste="setTimeout(onUrlInput,50)"
         value="">
-      <div id="pf_url_status" style="font-size:12px;min-height:18px;margin-top:4px">
-        ${hasCoords ? '<span style="color:var(--green)">✅ מיקום שמור</span>' : ''}
+      <div id="pf_url_status" style="font-size:12px;min-height:18px;margin-top:4px;line-height:1.6">
+        ${hasCoords ? '<span style="color:var(--green)">✅ מיקום שמור: ' + (item.lat||'').toString().slice(0,9) + ', ' + (item.lng||'').toString().slice(0,9) + '</span>' : ''}
       </div>
     </div>
 
