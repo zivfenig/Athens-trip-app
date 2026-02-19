@@ -352,47 +352,213 @@ function showPlaceInfo(page,id) {
 }
 
 // ─── ADD/EDIT ITEM ────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════
+//  ADD / EDIT PLACE  –  Nominatim in-app search
+// ═══════════════════════════════════════════════════════════════
+
+// State for the place form
+let _pfPage = '';
+let _pfSearchTimer = null;
+
 function openAddItem(page) {
-  editingId[page]=null;
-  document.getElementById('modalTitle').textContent='➕ הוסף פריט';
-  document.getElementById('modalContent').innerHTML=placeForm(page,{});
+  editingId[page] = null; _pfPage = page;
+  document.getElementById('modalTitle').textContent = '➕ הוסף מקום';
+  document.getElementById('modalContent').innerHTML = placeForm(page, {});
   openModal();
 }
-function openEditItem(page,id) {
-  editingId[page]=id;
-  const item=load(page).find(i=>i.id===id);
-  document.getElementById('modalTitle').textContent='✏️ עריכה';
-  document.getElementById('modalContent').innerHTML=placeForm(page,item);
+function openEditItem(page, id) {
+  editingId[page] = id; _pfPage = page;
+  const item = load(page).find(i => i.id === id);
+  document.getElementById('modalTitle').textContent = '✏️ עריכה';
+  document.getElementById('modalContent').innerHTML = placeForm(page, item);
+  // If editing existing item, show its map immediately
+  if (item && item.lat) _pfSetLocation(item.lat, item.lng, item.name, item.address || '');
   openModal();
 }
-function placeForm(page,item) {
-  const cats=load(PAGE_CFG[page].catsKey);
+
+// ── Main form HTML ────────────────────────────────────────────
+function placeForm(page, item) {
+  const cats = load(PAGE_CFG[page].catsKey);
   return `
-    <label class="form-label">שם</label><input class="form-input" id="pf_name" value="${item.name||''}" placeholder="שם...">
-    <label class="form-label">תיאור</label><textarea class="form-textarea" id="pf_desc" rows="2" style="resize:none">${item.desc||''}</textarea>
-    <label class="form-label">קטגוריה</label>
-    <select class="form-select" id="pf_cat">${cats.map(c=>`<option value="${c.id}"${item.catId===c.id?' selected':''}>${c.emoji} ${c.name}</option>`).join('')}</select>
-    <label class="form-label">כתובת</label><input class="form-input" id="pf_address" value="${item.address||''}" placeholder="Athens, Greece">
-    <label class="form-label">Latitude</label><input class="form-input" id="pf_lat" value="${item.lat||''}" type="number" step="any">
-    <label class="form-label">Longitude</label><input class="form-input" id="pf_lng" value="${item.lng||''}" type="number" step="any">
-    <label class="form-label">שעות פתיחה</label><input class="form-input" id="pf_hours" value="${item.hours||''}" placeholder="09:00-20:00">
-    <label class="form-label">הערות</label><input class="form-input" id="pf_notes" value="${item.notes||''}" placeholder="טיפ...">
-    <button class="save-btn" onclick="saveItem('${page}')">💾 שמור</button>`;
+    <!-- SEARCH BAR -->
+    <div class="pf-search-wrap">
+      <div class="pf-search-row">
+        <input class="pf-search-input" id="pf_search"
+          placeholder="🔍 חפשו שם מקום באתונה..."
+          oninput="_pfOnSearch()"
+          onkeydown="if(event.key==='Enter'){event.preventDefault();_pfDoSearch();}"
+          autocomplete="off">
+        <button class="pf-search-btn" onclick="_pfDoSearch()">חפש</button>
+      </div>
+      <div class="pf-results" id="pf_results" style="display:none"></div>
+    </div>
+
+    <!-- MAP PREVIEW -->
+    <div class="pf-map-wrap" id="pf_map_wrap" style="display:none">
+      <iframe id="pf_map_iframe"
+        style="width:100%;height:200px;border:none;border-radius:12px"
+        loading="lazy"></iframe>
+      <div class="pf-selected-badge" id="pf_selected_badge"></div>
+    </div>
+
+    <!-- HIDDEN COORDS -->
+    <input type="hidden" id="pf_lat" value="${item.lat||''}">
+    <input type="hidden" id="pf_lng" value="${item.lng||''}">
+
+    <!-- DETAILS -->
+    <div id="pf_details">
+      <label class="form-label">שם המקום *</label>
+      <input class="form-input" id="pf_name" value="${item.name||''}" placeholder="שם המקום...">
+
+      <label class="form-label">קטגוריה</label>
+      <select class="form-select" id="pf_cat">
+        ${cats.map(c=>`<option value="${c.id}"${item.catId===c.id?' selected':''}>${c.emoji} ${c.name}</option>`).join('')}
+      </select>
+
+      <label class="form-label">תיאור</label>
+      <textarea class="form-textarea" id="pf_desc" rows="2" style="resize:none">${item.desc||''}</textarea>
+
+      <label class="form-label">שעות פתיחה</label>
+      <input class="form-input" id="pf_hours" value="${item.hours||''}" placeholder="09:00-20:00">
+
+      <label class="form-label">הערות / טיפים</label>
+      <input class="form-input" id="pf_notes" value="${item.notes||''}" placeholder="טיפ שימושי...">
+    </div>
+
+    <button class="save-btn" onclick="saveItem('${page}')">💾 שמור מקום</button>`;
 }
+
+// ── Search with debounce ──────────────────────────────────────
+function _pfOnSearch() {
+  clearTimeout(_pfSearchTimer);
+  _pfSearchTimer = setTimeout(_pfDoSearch, 600);
+}
+
+async function _pfDoSearch() {
+  const q = (document.getElementById('pf_search')?.value || '').trim();
+  if (q.length < 2) return;
+
+  const resultsEl = document.getElementById('pf_results');
+  resultsEl.style.display = 'block';
+  resultsEl.innerHTML = '<div class="pf-result-loading">🔍 מחפש...</div>';
+
+  try {
+    // Nominatim – free OpenStreetMap geocoding, bias to Athens area
+    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q+' Athens Greece')}&limit=6&addressdetails=1&accept-language=he,en`;
+    const res  = await fetch(url, { headers: { 'Accept-Language': 'he,en' } });
+    const data = await res.json();
+
+    if (!data.length) {
+      resultsEl.innerHTML = '<div class="pf-result-empty">לא נמצאו תוצאות – נסה שם אחר</div>';
+      return;
+    }
+
+    resultsEl.innerHTML = data.map((r, i) => {
+      const name    = r.namedetails?.name || r.display_name.split(',')[0];
+      const address = r.display_name.split(',').slice(1, 3).join(',').trim();
+      const icon    = _pfTypeIcon(r.type, r.class);
+      return `<div class="pf-result-item" onclick="_pfSelectResult(${i})"
+        data-lat="${r.lat}" data-lng="${r.lon}"
+        data-name="${encodeURIComponent(name)}"
+        data-address="${encodeURIComponent(r.display_name)}">
+        <span class="pf-result-icon">${icon}</span>
+        <div class="pf-result-text">
+          <div class="pf-result-name">${name}</div>
+          <div class="pf-result-addr">${address}</div>
+        </div>
+        <span class="pf-result-arrow">›</span>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    resultsEl.innerHTML = '<div class="pf-result-empty">שגיאת רשת – בדקו חיבור לאינטרנט</div>';
+  }
+}
+
+function _pfTypeIcon(type, cls) {
+  const icons = {
+    restaurant:'🍽️', cafe:'☕', bar:'🍹', fast_food:'🌮',
+    museum:'🏛️', attraction:'🎯', monument:'🗿', viewpoint:'🌅',
+    park:'🌿', beach:'🏖️', hotel:'🏨', shop:'🛍️',
+    supermarket:'🛒', mall:'🏪', marketplace:'🏪',
+    clothes:'👗', jewelry:'💎', tourism:'📸'
+  };
+  return icons[type] || icons[cls] || '📍';
+}
+
+function _pfSelectResult(idx) {
+  const items = document.querySelectorAll('.pf-result-item');
+  const el    = items[idx];
+  if (!el) return;
+
+  const lat     = parseFloat(el.dataset.lat);
+  const lng     = parseFloat(el.dataset.lng);
+  const name    = decodeURIComponent(el.dataset.name);
+  const address = decodeURIComponent(el.dataset.address);
+
+  _pfSetLocation(lat, lng, name, address);
+  document.getElementById('pf_results').style.display = 'none';
+  document.getElementById('pf_search').value = name;
+}
+
+function _pfSetLocation(lat, lng, name, address) {
+  // Set hidden coords
+  document.getElementById('pf_lat').value = lat;
+  document.getElementById('pf_lng').value = lng;
+
+  // Auto-fill name if empty
+  const nameEl = document.getElementById('pf_name');
+  if (nameEl && !nameEl.value) nameEl.value = name;
+
+  // Show map preview
+  const wrap = document.getElementById('pf_map_wrap');
+  const iframe = document.getElementById('pf_map_iframe');
+  const badge  = document.getElementById('pf_selected_badge');
+  if (wrap && iframe) {
+    iframe.src = `https://maps.google.com/maps?q=${lat},${lng}&output=embed&z=17&hl=iw`;
+    wrap.style.display = 'block';
+  }
+  if (badge) {
+    badge.innerHTML = `✅ מיקום נבחר: <strong>${name}</strong>
+      <a href="https://www.google.com/maps?q=${lat},${lng}" target="_blank"
+        style="color:var(--blue-light);margin-right:6px;font-size:11px">פתח בגוגל מפס ↗</a>`;
+  }
+}
+
 function saveItem(page) {
-  const name=document.getElementById('pf_name').value.trim(); if(!name){showToast('⚠️ הכניסו שם');return;}
-  let all=load(page);
-  const data={ name, desc:document.getElementById('pf_desc').value, catId:document.getElementById('pf_cat').value,
-    address:document.getElementById('pf_address').value, lat:parseFloat(document.getElementById('pf_lat').value)||37.97,
-    lng:parseFloat(document.getElementById('pf_lng').value)||23.72, hours:document.getElementById('pf_hours').value,
-    notes:document.getElementById('pf_notes').value };
-  if(editingId[page]){ const idx=all.findIndex(i=>i.id===editingId[page]); if(idx>=0) all[idx]={...all[idx],...data}; }
-  else { data.id=Date.now(); all.push(data); }
-  save(page,all); closeModalDirect(); renderPlacePage(page); showToast('✅ נשמר!');
+  const name = document.getElementById('pf_name')?.value.trim();
+  const lat  = parseFloat(document.getElementById('pf_lat')?.value);
+  const lng  = parseFloat(document.getElementById('pf_lng')?.value);
+
+  if (!name)      { showToast('⚠️ הכניסו שם מקום'); return; }
+  if (!lat || !lng) { showToast('⚠️ יש לבחור מקום מהחיפוש'); return; }
+
+  let all = load(page);
+  const data = {
+    name, lat, lng,
+    catId:   document.getElementById('pf_cat')?.value || '',
+    desc:    document.getElementById('pf_desc')?.value || '',
+    address: document.getElementById('pf_search')?.value || '',
+    hours:   document.getElementById('pf_hours')?.value || '',
+    notes:   document.getElementById('pf_notes')?.value || ''
+  };
+  if (editingId[page]) {
+    const idx = all.findIndex(i => i.id === editingId[page]);
+    if (idx >= 0) all[idx] = { ...all[idx], ...data };
+  } else {
+    data.id = Date.now();
+    all.push(data);
+  }
+  save(page, all);
+  closeModalDirect();
+  renderPlacePage(page);
+  showToast('✅ ' + name + ' נשמר!');
 }
-function deleteItem(page,id) {
-  if(!confirm('למחוק?'))return;
-  save(page,load(page).filter(i=>i.id!==id)); renderPlacePage(page); showToast('🗑️ נמחק');
+
+function deleteItem(page, id) {
+  if (!confirm('למחוק מקום זה?')) return;
+  save(page, load(page).filter(i => i.id !== id));
+  renderPlacePage(page);
+  showToast('🗑️ נמחק');
 }
 
 // ═══════════════════════════════════════════════════════════════
