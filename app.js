@@ -369,12 +369,13 @@ function showPlaceInfo(page, id) {
   }, 200);
 }
 
-// ─── ADD/EDIT ITEM ────────────────────────────────────────────
 // ═══════════════════════════════════════════════════════════════
-//  ADD / EDIT PLACE  –  Google Places Autocomplete
+//  ADD / EDIT PLACE  –  Google Maps URL paste
 // ═══════════════════════════════════════════════════════════════
 
 let _pfPage = '';
+let _pfMap = null;
+let _pfMarker = null;
 
 function openAddItem(page) {
   editingId[page] = null; _pfPage = page;
@@ -391,30 +392,71 @@ function openEditItem(page, id) {
   openModal();
 }
 
-// ── Main form HTML ────────────────────────────────────────────
+// ── Parse lat/lng from any Google Maps URL ────────────────────
+function parseGMapsUrl(url) {
+  // /maps/place/.../@LAT,LNG,zoom  — most common share link
+  let m = url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+  if (m) return { lat: parseFloat(m[1]), lng: parseFloat(m[2]) };
+  // ?q=LAT,LNG
+  m = url.match(/[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/);
+  if (m) return { lat: parseFloat(m[1]), lng: parseFloat(m[2]) };
+  // !3dLAT!4dLNG  (long embed URLs)
+  m = url.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/);
+  if (m) return { lat: parseFloat(m[1]), lng: parseFloat(m[2]) };
+  // ll=LAT,LNG
+  m = url.match(/[?&]ll=(-?\d+\.\d+),(-?\d+\.\d+)/);
+  if (m) return { lat: parseFloat(m[1]), lng: parseFloat(m[2]) };
+  return null;
+}
+
+// ── Try to extract place name from URL ────────────────────────
+function parseGMapsName(url) {
+  const m = url.match(/maps\/place\/([^/@?&]+)/);
+  if (m) return decodeURIComponent(m[1].replace(/\+/g, ' ')).trim();
+  return '';
+}
+
+// ── Called on every keystroke/paste in the URL field ─────────
+function onUrlInput() {
+  const url = document.getElementById('pf_url')?.value.trim() || '';
+  if (!url) return;
+  const coords = parseGMapsUrl(url);
+  const statusEl = document.getElementById('pf_url_status');
+  if (coords) {
+    const guessedName = parseGMapsName(url);
+    _pfSetLocation(coords.lat, coords.lng, guessedName, '');
+    if (statusEl) statusEl.innerHTML = '<span style="color:var(--green)">✅ מיקום זוהה</span>';
+  } else {
+    if (statusEl) statusEl.innerHTML = '<span style="color:var(--orange)">⚠️ לא זוהה מיקום – נסו קישור שיתוף</span>';
+  }
+}
+
+// ── Form HTML ─────────────────────────────────────────────────
 function placeForm(page, item) {
   const cats      = load(PAGE_CFG[page].catsKey);
   const hasCoords = !!(item.lat && item.lng);
   return `
-    <!-- SEARCH BAR -->
-    <div class="pf-search-wrap">
-      <label class="form-label">🔍 חיפוש מקום</label>
-      <div class="pf-search-row">
-        <input class="pf-search-input" id="pf_search"
-          placeholder="הקלידו שם מסעדה, אטרקציה, חנות..."
-          autocomplete="off"
-          oninput="_pfOnInput()"
-          onkeydown="if(event.key==='Enter'){event.preventDefault();_pfDoSearch();}">
-        <button class="pf-search-btn" onclick="_pfDoSearch()">חפש</button>
+    <!-- GOOGLE MAPS URL -->
+    <div style="margin-bottom:16px">
+      <label class="form-label">🔗 קישור מגוגל מפס</label>
+      <div style="font-size:12px;color:var(--text-dim);margin-bottom:8px;line-height:1.6">
+        בגוגל מפס: מצאו את המקום → לחצו שיתוף → העתק קישור → הדביקו כאן
       </div>
-      <div class="pf-results" id="pf_results" style="display:none"></div>
+      <input class="form-input" id="pf_url"
+        placeholder="https://maps.app.goo.gl/... או https://www.google.com/maps/..."
+        style="direction:ltr;text-align:left;font-size:13px"
+        oninput="onUrlInput()" onpaste="setTimeout(onUrlInput,50)"
+        value="">
+      <div id="pf_url_status" style="font-size:12px;min-height:18px;margin-top:4px">
+        ${hasCoords ? '<span style="color:var(--green)">✅ מיקום שמור</span>' : ''}
+      </div>
     </div>
 
-    <!-- LEAFLET MAP PREVIEW -->
-    <div class="pf-map-wrap" id="pf_map_wrap" style="display:${hasCoords?'block':'none'}">
-      <div id="pf_leaflet_map" style="width:100%;height:220px;border-radius:12px;overflow:hidden"></div>
-      <div class="pf-selected-badge" id="pf_selected_badge">
-        ${hasCoords?'✅ <strong>'+(item.name||'')+'</strong>':''}
+    <!-- LEAFLET PREVIEW -->
+    <div id="pf_map_wrap" style="display:${hasCoords?'block':'none'};margin-bottom:16px">
+      <div id="pf_leaflet_map" style="width:100%;height:200px;border-radius:12px;overflow:hidden"></div>
+      <div id="pf_selected_badge" style="font-size:12px;color:var(--text-dim);margin-top:6px;padding:6px 10px;background:var(--bg);border-radius:8px">
+        ${hasCoords ? '📍 ' + (item.lat||'').toString().slice(0,8) + ', ' + (item.lng||'').toString().slice(0,8) + ' – גרור את הסיכה לכיוונון' : ''}
       </div>
     </div>
 
@@ -443,119 +485,40 @@ function placeForm(page, item) {
     <button class="save-btn" onclick="saveItem('${page}')">💾 שמור מקום</button>`;
 }
 
-// ── Leaflet mini-map inside the form ─────────────────────────
-let _pfMap = null;
-let _pfMarker = null;
-let _pfDebounce = null;
-
+// ── Leaflet mini-map ──────────────────────────────────────────
 function _pfInitLeafletMap(lat, lng) {
   const el = document.getElementById('pf_leaflet_map');
   if (!el) return;
-  // Destroy old map if exists
   if (_pfMap) { _pfMap.remove(); _pfMap = null; _pfMarker = null; }
-  _pfMap = L.map('pf_leaflet_map', { zoomControl: true, attributionControl: false }).setView([lat, lng], 17);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19
-  }).addTo(_pfMap);
+  _pfMap = L.map('pf_leaflet_map', { zoomControl: true, attributionControl: false })
+            .setView([lat, lng], 17);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(_pfMap);
   _pfMarker = L.marker([lat, lng], { draggable: true }).addTo(_pfMap);
-  // Allow dragging pin to fine-tune location
   _pfMarker.on('dragend', e => {
     const pos = e.target.getLatLng();
     document.getElementById('pf_lat').value = pos.lat.toFixed(6);
     document.getElementById('pf_lng').value = pos.lng.toFixed(6);
     document.getElementById('pf_selected_badge').innerHTML =
-      '📍 מיקום מותאם ידנית – גרור את הסיכה לשינוי';
+      '📍 ' + pos.lat.toFixed(5) + ', ' + pos.lng.toFixed(5) + ' – מיקום מותאם ידנית';
   });
-  // Fix Leaflet tile loading in modal
   setTimeout(() => _pfMap.invalidateSize(), 150);
 }
 
 function _pfSetLocation(lat, lng, name, address) {
   document.getElementById('pf_lat').value = lat;
   document.getElementById('pf_lng').value = lng;
-  const nameEl = document.getElementById('pf_name');
-  if (nameEl && !nameEl.value) nameEl.value = name;
 
-  // Show map
+  // Auto-fill name if it was parsed from URL and field is empty
+  const nameEl = document.getElementById('pf_name');
+  if (nameEl && !nameEl.value && name) nameEl.value = name;
+
   const wrap = document.getElementById('pf_map_wrap');
   if (wrap) wrap.style.display = 'block';
 
   const badge = document.getElementById('pf_selected_badge');
-  if (badge) badge.innerHTML = '✅ <strong>' + name + '</strong> · <span style="font-size:11px;color:var(--text-dim)">' + (address||'') + '</span>';
+  if (badge) badge.innerHTML = '📍 ' + lat.toFixed(5) + ', ' + lng.toFixed(5) + ' – גרור את הסיכה לכיוונון';
 
   _pfInitLeafletMap(lat, lng);
-}
-
-// ── Nominatim search (OpenStreetMap – 100% free) ─────────────
-let _lastResults = [];
-
-function _pfOnInput() {
-  clearTimeout(_pfDebounce);
-  _pfDebounce = setTimeout(_pfDoSearch, 500);
-}
-
-async function _pfDoSearch() {
-  const q = (document.getElementById('pf_search')?.value || '').trim();
-  const resultsEl = document.getElementById('pf_results');
-  if (q.length < 2) { resultsEl.style.display = 'none'; return; }
-
-  resultsEl.style.display = 'block';
-  resultsEl.innerHTML = '<div class="pf-result-loading">🔍 מחפש...</div>';
-
-  try {
-    // Nominatim with Athens viewbox to bias results
-    const viewbox = '23.5,37.8,24.1,38.2'; // Athens bounding box
-    const url = `https://nominatim.openstreetmap.org/search` +
-      `?format=json&q=${encodeURIComponent(q)}` +
-      `&viewbox=${viewbox}&bounded=0&limit=7` +
-      `&addressdetails=1&namedetails=1&accept-language=he,en`;
-    const res  = await fetch(url, { headers: { 'User-Agent': 'GreeceTrip/1.0' } });
-    const data = await res.json();
-    _lastResults = data;
-
-    if (!data.length) {
-      resultsEl.innerHTML = '<div class="pf-result-empty">לא נמצאו תוצאות – נסו שם אחר או באנגלית</div>';
-      return;
-    }
-
-    resultsEl.innerHTML = data.map((r, i) => {
-      const name = r.namedetails?.name || r.namedetails?.['name:he'] || r.display_name.split(',')[0];
-      const city = [r.address?.suburb, r.address?.city_district, r.address?.city]
-                    .filter(Boolean).join(', ') || r.display_name.split(',').slice(1,3).join(',');
-      const icon = _pfIcon(r.type, r.class);
-      return `<div class="pf-result-item" onclick="_pfPickResult(${i})">
-        <span class="pf-result-icon">${icon}</span>
-        <div class="pf-result-text">
-          <div class="pf-result-name">${name}</div>
-          <div class="pf-result-addr">${city}</div>
-        </div>
-        <span class="pf-result-arrow">›</span>
-      </div>`;
-    }).join('');
-  } catch(e) {
-    resultsEl.innerHTML = '<div class="pf-result-empty">⚠️ שגיאת רשת</div>';
-  }
-}
-
-function _pfIcon(type, cls) {
-  const m = {
-    restaurant:'🍽️', cafe:'☕', bar:'🍹', fast_food:'🌮', pub:'🍺',
-    museum:'🏛️', attraction:'🎯', monument:'🗿', viewpoint:'🌅', ruins:'🏛️',
-    park:'🌿', beach:'🏖️', hotel:'🏨', hostel:'🏨',
-    shop:'🛍️', supermarket:'🛒', mall:'🏪', marketplace:'🛒',
-    clothes:'👗', jewelry:'💎', tourism:'📸', place_of_worship:'⛪',
-    theatre:'🎭', cinema:'🎬', nightclub:'🎵'
-  };
-  return m[type] || m[cls] || '📍';
-}
-
-function _pfPickResult(idx) {
-  const r = _lastResults[idx]; if (!r) return;
-  const name = r.namedetails?.name || r.namedetails?.['name:he'] || r.display_name.split(',')[0];
-  const addr = r.display_name;
-  document.getElementById('pf_results').style.display = 'none';
-  document.getElementById('pf_search').value = name;
-  _pfSetLocation(parseFloat(r.lat), parseFloat(r.lon), name, addr);
 }
 
 function saveItem(page) {
@@ -563,15 +526,15 @@ function saveItem(page) {
   const lat  = parseFloat(document.getElementById('pf_lat')?.value);
   const lng  = parseFloat(document.getElementById('pf_lng')?.value);
 
-  if (!name)      { showToast('⚠️ הכניסו שם מקום'); return; }
-  if (!lat || !lng) { showToast('⚠️ יש לבחור מקום מהחיפוש'); return; }
+  if (!name)        { showToast('⚠️ הכניסו שם מקום'); return; }
+  if (!lat || !lng) { showToast('⚠️ הדביקו קישור גוגל מפס עם מיקום'); return; }
 
   let all = load(page);
   const data = {
     name, lat, lng,
-    catId:   document.getElementById('pf_cat')?.value || '',
-    desc:    document.getElementById('pf_desc')?.value || '',
-    address: document.getElementById('pf_search')?.value || '',
+    catId:   document.getElementById('pf_cat')?.value   || '',
+    desc:    document.getElementById('pf_desc')?.value  || '',
+    address: document.getElementById('pf_url')?.value   || '',
     hours:   document.getElementById('pf_hours')?.value || '',
     notes:   document.getElementById('pf_notes')?.value || ''
   };
