@@ -1,234 +1,343 @@
-<!DOCTYPE html>
-<html lang="he" dir="rtl">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
-  <title>🏛️ טיול יוון 2025</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css">
-</head>
-<body>
+:root {
+  --blue:       #1a6fb5;
+  --blue-light: #3a9fd8;
+  --blue-dark:  #0d4a82;
+  --gold:       #d4a843;
+  --bg:         #0a1628;
+  --surface:    #111f38;
+  --surface2:   #162440;
+  --text:       #e8f0fb;
+  --text-dim:   #8ba0c0;
+  --border:     rgba(58,159,216,0.15);
+  --shadow:     0 8px 32px rgba(0,0,0,0.4);
+  --radius:     16px;
+  --green:      #2dd4a0;
+  --orange:     #f5874a;
+  --red:        #e85555;
+  --purple:     #9b72f0;
+}
+*{ box-sizing:border-box; margin:0; padding:0; }
+body{ font-family:'Heebo',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; direction:rtl; }
 
-<!-- ══ LOGIN ══════════════════════════════════════════════════ -->
-<div id="loginScreen">
-  <div class="login-card">
-    <div class="login-logo">🏛️</div>
-    <div class="login-title">טיול יוון 2025</div>
-    <div class="login-sub">הכניסו שם משתמש כדי להיכנס</div>
-    <input class="login-input" id="usernameInput" type="text" placeholder="שם משתמש..." autocomplete="off">
-    <button class="login-btn" onclick="doLogin()">כניסה לאפליקציה ✈️</button>
-    <div class="login-error" id="loginError"></div>
-  </div>
-</div>
+/* ── LOGIN ───────────────────────────────────────────────────── */
+#loginScreen{
+  min-height:100vh; display:flex; align-items:center; justify-content:center;
+  background:radial-gradient(ellipse at 30% 20%,rgba(26,111,181,.3),transparent 60%),
+             radial-gradient(ellipse at 80% 80%,rgba(212,168,67,.15),transparent 50%), var(--bg);
+  padding:20px;
+}
+.login-card{ background:var(--surface); border:1px solid var(--border); border-radius:24px; padding:40px 32px; width:100%; max-width:380px; text-align:center; box-shadow:var(--shadow),0 0 60px rgba(26,111,181,.1); }
+.login-logo { font-size:52px; margin-bottom:8px; }
+.login-title{ font-size:26px; font-weight:900; color:var(--gold); margin-bottom:4px; }
+.login-sub  { font-size:14px; color:var(--text-dim); margin-bottom:32px; }
+.login-input{ width:100%; background:var(--bg); border:1px solid var(--border); border-radius:12px; padding:14px 16px; color:var(--text); font-family:'Heebo',sans-serif; font-size:16px; text-align:right; margin-bottom:16px; outline:none; transition:border-color .2s; }
+.login-input:focus{ border-color:var(--blue-light); }
+.login-btn  { width:100%; background:linear-gradient(135deg,var(--blue),var(--blue-dark)); color:white; border:none; border-radius:12px; padding:14px; font-family:'Heebo',sans-serif; font-size:16px; font-weight:700; cursor:pointer; box-shadow:0 4px 20px rgba(26,111,181,.4); transition:transform .15s; }
+.login-btn:active{ transform:scale(.97); }
+.login-error{ font-size:13px; color:var(--red); margin-top:10px; min-height:20px; }
 
-<!-- ══ APP ════════════════════════════════════════════════════ -->
-<div id="app">
+/* ── TOP BAR ─────────────────────────────────────────────────── */
+#app{ display:none; }
+.top-bar{ position:sticky; top:0; z-index:100; background:rgba(10,22,40,.95); backdrop-filter:blur(12px); border-bottom:1px solid var(--border); padding:10px 14px; display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.top-bar-title{ font-size:15px; font-weight:700; color:var(--gold); flex-shrink:0; }
+.top-bar-right{ display:flex; align-items:center; gap:6px; flex-wrap:wrap; justify-content:flex-end; }
+.top-bar-user { font-size:13px; color:var(--text-dim); }
+.admin-badge  { background:var(--gold); color:#000; font-size:10px; font-weight:700; padding:2px 6px; border-radius:6px; }
+.logout-btn   { background:none; border:1px solid var(--border); color:var(--text-dim); border-radius:8px; padding:4px 10px; font-size:12px; cursor:pointer; font-family:'Heebo',sans-serif; }
+.key-status-btn{ background:rgba(155,114,240,.1); border:1px solid rgba(155,114,240,.4); color:var(--purple); border-radius:8px; padding:4px 10px; font-size:11px; font-weight:700; cursor:pointer; font-family:'Heebo',sans-serif; white-space:nowrap; }
 
-  <!-- Top Bar -->
-  <div class="top-bar">
-    <div class="top-bar-title">🏛️ יוון 2025</div>
-    <div class="top-bar-right">
-      <button id="keyStatusBtn" class="key-status-btn" onclick="showKeyModal()">🔑 Token</button>
-      <span class="top-bar-user" id="topBarUser"></span>
-      <span class="admin-badge" id="adminBadgeTop" style="display:none">מנהל</span>
-      <button class="logout-btn" onclick="doLogout()">יציאה</button>
-    </div>
-  </div>
+/* ── BOTTOM NAV ──────────────────────────────────────────────── */
+.bottom-nav{
+  position:fixed; bottom:0; left:0; right:0; z-index:100;
+  background:rgba(10,22,40,.97); backdrop-filter:blur(12px); border-top:1px solid var(--border);
+  display:flex; overflow-x:auto; scrollbar-width:none;
+  padding:6px 0 env(safe-area-inset-bottom,6px);
+}
+.bottom-nav::-webkit-scrollbar{ display:none; }
+.nav-item{
+  flex:0 0 auto; min-width:58px; display:flex; flex-direction:column; align-items:center; gap:2px;
+  padding:5px 4px; cursor:pointer; border:none; background:none;
+  color:var(--text-dim); font-family:'Heebo',sans-serif; font-size:9px;
+  transition:color .2s; -webkit-tap-highlight-color:transparent;
+}
+.nav-item.active{ color:var(--blue-light); }
+.nav-icon { font-size:20px; }
+.nav-label{ white-space:nowrap; }
 
-  <!-- ══ PAGE: בית ════════════════════════════════════════════ -->
-  <div id="pageSummary" class="page active">
-    <div class="trip-hero">
-      <div class="trip-hero-emoji">⛵</div>
-      <div class="trip-hero-title">ברוכים הבאים ליוון!</div>
-      <div class="trip-hero-sub">Faliro 8, Athens – בסיס המלון שלנו</div>
-      <div class="trip-stats">
-        <div class="trip-stat"><div class="trip-stat-num" id="statItinerary">0</div><div class="trip-stat-label">במסלול</div></div>
-        <div class="trip-stat"><div class="trip-stat-num" id="statAttr">0</div><div class="trip-stat-label">אטרקציות</div></div>
-        <div class="trip-stat"><div class="trip-stat-num" id="statExpenses">0</div><div class="trip-stat-label">הוצאות</div></div>
-      </div>
-    </div>
-    <div class="expense-summary">
-      <div class="expense-summary-title">📊 סיכום הוצאות</div>
-      <div class="total-amount" id="summaryTotal">₪0</div>
-      <div class="total-label">סה"כ</div>
-      <div class="cat-bars" id="summaryBars"></div>
-    </div>
-  </div>
+/* ── PAGES ───────────────────────────────────────────────────── */
+.page{ display:none; padding:16px 16px 96px; animation:fadeIn .25s ease; }
+.page.active{ display:block; }
+@keyframes fadeIn{ from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:none} }
 
-  <!-- ══ PAGE: מסלול ══════════════════════════════════════════ -->
-  <div id="pageItinerary" class="page">
-    <div class="page-header">📅 מסלול הטיול</div>
-    <div class="page-subheader">בחרו פריטים מאטרקציות, מסעדות וקניות</div>
-    <div class="day-tabs" id="dayTabs"></div>
-    <button class="optimize-btn" id="itinOptBtn" onclick="optimizeItineraryDay()" style="display:none">
-      🧭 סדר חכם לפי מיקום
-    </button>
-    <div id="itineraryList"></div>
-  </div>
+/* ── HERO ────────────────────────────────────────────────────── */
+.trip-hero{ background:linear-gradient(135deg,rgba(26,111,181,.3),rgba(10,22,40,0)); border:1px solid var(--border); border-radius:var(--radius); padding:20px; margin-bottom:16px; text-align:center; }
+.trip-hero-emoji{ font-size:48px; margin-bottom:8px; }
+.trip-hero-title{ font-size:24px; font-weight:900; color:var(--gold); }
+.trip-hero-sub  { font-size:13px; color:var(--text-dim); margin-top:4px; }
+.trip-stats     { display:flex; gap:10px; margin-top:16px; }
+.trip-stat      { flex:1; background:rgba(255,255,255,.04); border-radius:10px; padding:10px; text-align:center; }
+.trip-stat-num  { font-size:22px; font-weight:900; color:var(--blue-light); }
+.trip-stat-label{ font-size:11px; color:var(--text-dim); margin-top:2px; }
 
-  <!-- ══ PAGE: אטרקציות ═══════════════════════════════════════ -->
-  <div id="pageAttractions" class="page">
-    <div class="page-header">🏛️ אטרקציות</div>
-    <div class="page-subheader">מקומות שווה לבקר בהם</div>
-    <div class="rest-toolbar">
-      <div class="rest-cat-filter" id="attractionsCatFilter"></div>
-      <button class="proximity-btn" id="attractionsProxBtn" onclick="sortByProximity('attractions')">📍 דרג לפי קרבה</button>
-    </div>
-    <div id="attractionsList"></div>
-    <div id="attractionsAdminAdd" style="display:none;margin-top:8px">
-      <button class="add-btn" onclick="openAddItem('attractions')">➕ הוסף אטרקציה</button>
-    </div>
-  </div>
+/* ── EXPENSE SUMMARY ─────────────────────────────────────────── */
+.expense-summary{ background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:16px; margin-bottom:16px; }
+.expense-summary-title{ font-size:13px; color:var(--text-dim); margin-bottom:12px; }
+.total-amount  { font-size:32px; font-weight:900; color:var(--gold); margin-bottom:4px; }
+.total-label   { font-size:12px; color:var(--text-dim); margin-bottom:16px; }
+.cat-bars      { display:flex; flex-direction:column; gap:8px; }
+.cat-bar-row   { display:flex; align-items:center; gap:10px; }
+.cat-bar-label { font-size:12px; width:72px; color:var(--text); text-align:right; flex-shrink:0; }
+.cat-bar-track { flex:1; height:8px; background:rgba(255,255,255,.06); border-radius:4px; overflow:hidden; }
+.cat-bar-fill  { height:100%; border-radius:4px; transition:width .5s; }
+.cat-bar-amount{ font-size:11px; color:var(--text-dim); width:54px; text-align:left; flex-shrink:0; }
 
-  <!-- ══ PAGE: מסעדות ═════════════════════════════════════════ -->
-  <div id="pageRestaurants" class="page">
-    <div class="page-header">🍽️ מסעדות</div>
-    <div class="page-subheader">מסעדות שווה לנסות</div>
-    <div class="rest-toolbar">
-      <div class="rest-cat-filter" id="restaurantsCatFilter"></div>
-      <button class="proximity-btn" id="restaurantsProxBtn" onclick="sortByProximity('restaurants')">📍 דרג לפי קרבה</button>
-    </div>
-    <div id="restaurantsList"></div>
-    <div id="restaurantsAdminAdd" style="display:none;margin-top:8px">
-      <button class="add-btn" onclick="openAddItem('restaurants')">➕ הוסף מסעדה</button>
-    </div>
-  </div>
+/* ── PAGE HEADERS ────────────────────────────────────────────── */
+.page-header   { font-size:22px; font-weight:900; margin-bottom:4px; }
+.page-subheader{ font-size:13px; color:var(--text-dim); margin-bottom:16px; }
+.section-title { font-size:18px; font-weight:900; margin-bottom:12px; }
 
-  <!-- ══ PAGE: קניות ══════════════════════════════════════════ -->
-  <div id="pageShopping" class="page">
-    <div class="page-header">🛍️ קניות</div>
-    <div class="page-subheader">שווקים וחנויות מומלצות</div>
-    <div class="rest-toolbar">
-      <div class="rest-cat-filter" id="shoppingCatFilter"></div>
-      <button class="proximity-btn" id="shoppingProxBtn" onclick="sortByProximity('shopping')">📍 דרג לפי קרבה</button>
-    </div>
-    <div id="shoppingList"></div>
-    <div id="shoppingAdminAdd" style="display:none;margin-top:8px">
-      <button class="add-btn" onclick="openAddItem('shopping')">➕ הוסף מקום קנייה</button>
-    </div>
-  </div>
+/* ── DAY TABS ────────────────────────────────────────────────── */
+.day-tabs{ display:flex; gap:8px; overflow-x:auto; padding-bottom:8px; margin-bottom:16px; scrollbar-width:none; }
+.day-tabs::-webkit-scrollbar{ display:none; }
+.day-tab{ flex-shrink:0; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:8px 14px; cursor:pointer; font-family:'Heebo',sans-serif; font-size:13px; color:var(--text-dim); transition:all .2s; -webkit-tap-highlight-color:transparent; }
+.day-tab.active{ background:var(--blue); border-color:var(--blue); color:white; font-weight:700; }
 
-  <!-- ══ PAGE: הוצאות ═════════════════════════════════════════ -->
-  <div id="pageExpenses" class="page">
-    <div class="page-header">💰 הוצאות</div>
-    <div class="page-subheader">מעקב הוצאות לטיול</div>
-    <div class="rate-tag" id="rateTag">⏳ טוען שער יורו...</div>
-    <div class="expense-summary">
-      <div class="expense-summary-title">📊 חלוקה לפי קטגוריה</div>
-      <div class="total-amount" id="summaryTotal2">₪0</div>
-      <div class="total-label">סה"כ בשקלים</div>
-      <div class="cat-bars" id="summaryBars2"></div>
-    </div>
-    <div class="exp-action-row">
-      <button class="convert-btn" id="convertBtn" onclick="toggleConversion()">💱 הצג הכל בשקלים</button>
-      <button class="csv-btn" onclick="exportCSV()">📥 ייצא CSV</button>
-    </div>
-    <button class="ai-analyze-btn" onclick="analyzeExpenses()">🤖 ניתוח AI – המלצות חיסכון</button>
-    <div id="aiExpenseResult" style="display:none"></div>
-    <div class="expense-form-card">
-      <div class="section-title" style="font-size:16px;margin-bottom:14px">➕ הוסף הוצאה</div>
-      <label class="form-label">קטגוריה</label>
-      <div class="cat-chips" id="expCatChips">
-        <div class="cat-chip active" data-cat="shopping" onclick="selectExpCat(this)" style="background:#9b72f0;border-color:#9b72f0;color:white">🛍️ שופינג</div>
-        <div class="cat-chip" data-cat="food"      onclick="selectExpCat(this)">🍽️ אוכל</div>
-        <div class="cat-chip" data-cat="transport" onclick="selectExpCat(this)">🚌 תחבורה</div>
-        <div class="cat-chip" data-cat="other"     onclick="selectExpCat(this)">📦 אחר</div>
-      </div>
-      <label class="form-label">פירוט</label>
-      <textarea class="form-textarea" id="expDesc" placeholder="תיאור ההוצאה..." rows="2" style="resize:none"></textarea>
-      <div class="form-row">
-        <div>
-          <label class="form-label">סכום</label>
-          <input class="form-input" id="expAmount" type="number" placeholder="0" style="margin-bottom:0">
-        </div>
-        <div>
-          <label class="form-label">מטבע</label>
-          <div class="currency-toggle" style="margin-bottom:0">
-            <button class="currency-btn active" id="btnILS" onclick="selectCurrency('ILS')">₪ שקל</button>
-            <button class="currency-btn" id="btnEUR" onclick="selectCurrency('EUR')">€ יורו</button>
-          </div>
-        </div>
-      </div>
-      <div style="height:12px"></div>
-      <button class="add-expense-btn" onclick="addExpense()">✅ הוסף הוצאה</button>
-    </div>
-    <div class="section-title" style="margin-bottom:12px">📋 רשימת הוצאות</div>
-    <div id="expensesList"></div>
-  </div>
+/* ── OPTIMIZE BTN ────────────────────────────────────────────── */
+.optimize-btn{ width:100%; background:linear-gradient(135deg,rgba(155,114,240,.2),rgba(26,111,181,.2)); border:1px solid rgba(155,114,240,.4); color:var(--purple); border-radius:12px; padding:12px; font-family:'Heebo',sans-serif; font-size:14px; font-weight:700; cursor:pointer; margin-bottom:16px; display:flex; align-items:center; justify-content:center; gap:8px; transition:transform .15s; -webkit-tap-highlight-color:transparent; }
+.optimize-btn:active{ transform:scale(.97); }
 
-  <!-- ══ PAGE: מפה ════════════════════════════════════════════ -->
-  <div id="pageMap" class="page" style="padding-bottom:80px">
-    <div class="page-header">🗺️ מפה</div>
-    <div class="page-subheader">מלון Faliro 8 – אתונה</div>
-    <div id="mapContainer">
-      <iframe src="https://maps.google.com/maps?q=Faliro+8+Athens+Greece&output=embed&z=14&hl=iw" allowfullscreen loading="lazy"></iframe>
-    </div>
-  </div>
+/* ── PLACE CARD (used on attractions/restaurants/shopping/itinerary) */
+.rest-card{ background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:16px; margin-bottom:12px; position:relative; overflow:hidden; }
+.rest-card::before{ content:''; position:absolute; right:0; top:0; bottom:0; width:3px; background:linear-gradient(180deg,var(--gold),#a07020); }
+.rest-rank{ position:absolute; left:14px; top:14px; background:linear-gradient(135deg,var(--gold),#a07020); color:#000; width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:900; }
+.rest-cat-badge{ display:inline-flex; align-items:center; gap:4px; padding:3px 10px; border-radius:20px; border:1px solid; font-size:11px; font-weight:600; margin-bottom:6px; }
+.rest-name{ font-size:17px; font-weight:700; margin-bottom:4px; padding-left:36px; }
+.rest-desc{ font-size:13px; color:var(--text-dim); margin-bottom:6px; line-height:1.5; }
+.rest-meta{ font-size:12px; color:var(--text-dim); line-height:1.8; }
 
-  <!-- ══ PAGE: צ'אט AI ════════════════════════════════════════ -->
-  <div id="pageChat" class="page">
-    <div class="chat-wrapper">
-      <div class="chat-header">
-        <div>
-          <div class="page-header" style="margin-bottom:2px">💬 מדריך AI</div>
-          <div class="page-subheader" style="margin-bottom:0">שאלו על יוון – מקומות, שעות, טיפים</div>
-        </div>
-        <button class="chat-clear-btn" onclick="clearChat()">🗑️ נקה</button>
-      </div>
-      <div class="chat-messages" id="chatMessages"></div>
-      <div>
-        <div class="chat-input-row">
-          <textarea class="chat-input" id="chatInput" placeholder="שאלו אותי על יוון..." rows="1"></textarea>
-          <button class="chat-send-btn" id="chatSendBtn" onclick="sendChatMessage()">➤</button>
-        </div>
-        <div class="chat-hint">Shift+Enter לשורה חדשה</div>
-      </div>
-    </div>
-  </div>
+/* ── ATTR ACTIONS ────────────────────────────────────────────── */
+.attr-actions{ display:flex; gap:7px; flex-wrap:wrap; margin-top:12px; }
+.attr-btn{ flex:1; min-width:0; display:flex; align-items:center; justify-content:center; gap:5px; padding:9px 6px; border-radius:10px; border:none; font-family:'Heebo',sans-serif; font-size:12px; font-weight:600; cursor:pointer; transition:transform .15s,opacity .15s; -webkit-tap-highlight-color:transparent; text-decoration:none; white-space:nowrap; }
+.attr-btn:active{ transform:scale(.95); opacity:.85; }
+.btn-nav      { background:linear-gradient(135deg,var(--green),#1fa87a); color:#000; }
+.btn-info     { background:var(--surface2); color:var(--text); border:1px solid var(--border); }
+.btn-edit     { background:rgba(212,168,67,.15); color:var(--gold); border:1px solid rgba(212,168,67,.3); }
+.btn-delete   { background:rgba(232,85,85,.1); color:var(--red); border:1px solid rgba(232,85,85,.3); }
+.btn-add-itin { background:rgba(45,212,160,.12); color:var(--green); border:1px solid rgba(45,212,160,.35); }
+.btn-add-itin.in-itin{ background:rgba(45,212,160,.25); border-color:var(--green); }
 
-  <!-- ══ BOTTOM NAV ════════════════════════════════════════════ -->
-  <!-- scroll wrapper so 8 tabs fit -->
-  <nav class="bottom-nav">
-    <button class="nav-item active" onclick="showPage('summary',this)">
-      <span class="nav-icon">🏠</span><span class="nav-label">בית</span>
-    </button>
-    <button class="nav-item" onclick="showPage('itinerary',this)">
-      <span class="nav-icon">📅</span><span class="nav-label">מסלול</span>
-    </button>
-    <button class="nav-item" onclick="showPage('attractions',this)">
-      <span class="nav-icon">🏛️</span><span class="nav-label">אטרקציות</span>
-    </button>
-    <button class="nav-item" onclick="showPage('restaurants',this)">
-      <span class="nav-icon">🍽️</span><span class="nav-label">מסעדות</span>
-    </button>
-    <button class="nav-item" onclick="showPage('shopping',this)">
-      <span class="nav-icon">🛍️</span><span class="nav-label">קניות</span>
-    </button>
-    <button class="nav-item" onclick="showPage('expenses',this)">
-      <span class="nav-icon">💰</span><span class="nav-label">הוצאות</span>
-    </button>
-    <button class="nav-item" onclick="showPage('map',this)">
-      <span class="nav-icon">🗺️</span><span class="nav-label">מפה</span>
-    </button>
-    <button class="nav-item" onclick="showPage('chat',this)">
-      <span class="nav-icon">💬</span><span class="nav-label">AI</span>
-    </button>
-  </nav>
+/* ── PLACE TOOLBAR ───────────────────────────────────────────── */
+.rest-toolbar{ display:flex; flex-direction:column; gap:10px; margin-bottom:16px; }
+.rest-cat-filter{ display:flex; gap:8px; overflow-x:auto; padding-bottom:4px; scrollbar-width:none; }
+.rest-cat-filter::-webkit-scrollbar{ display:none; }
+.rest-chip{ flex-shrink:0; padding:7px 14px; border-radius:20px; border:1px solid var(--border); background:var(--surface); color:var(--text-dim); font-family:'Heebo',sans-serif; font-size:13px; font-weight:500; cursor:pointer; transition:all .2s; white-space:nowrap; -webkit-tap-highlight-color:transparent; }
+.rest-chip.active{ background:var(--blue); border-color:var(--blue); color:white; font-weight:700; }
+.rest-chip-edit{ background:rgba(212,168,67,.1); border-color:rgba(212,168,67,.3); color:var(--gold); }
+.proximity-btn{ width:100%; background:linear-gradient(135deg,rgba(45,212,160,.2),rgba(26,111,181,.15)); border:1px solid rgba(45,212,160,.4); color:var(--green); border-radius:12px; padding:12px; font-family:'Heebo',sans-serif; font-size:14px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; transition:transform .15s; -webkit-tap-highlight-color:transparent; }
+.proximity-btn:active{ transform:scale(.97); }
 
-</div><!-- /#app -->
+/* ── ADD BTN ─────────────────────────────────────────────────── */
+.add-btn{ width:100%; background:rgba(26,111,181,.1); border:1px dashed rgba(58,159,216,.4); color:var(--blue-light); border-radius:12px; padding:14px; font-family:'Heebo',sans-serif; font-size:14px; font-weight:600; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; -webkit-tap-highlight-color:transparent; }
 
-<!-- Modal -->
-<div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
-  <div class="modal">
-    <button class="modal-close" onclick="closeModalDirect()">✕</button>
-    <div class="modal-handle"></div>
-    <div class="modal-title" id="modalTitle"></div>
-    <div id="modalContent"></div>
-  </div>
-</div>
+/* ── EXPENSES ────────────────────────────────────────────────── */
+.rate-tag{ display:inline-flex; align-items:center; gap:6px; background:rgba(45,212,160,.1); border:1px solid rgba(45,212,160,.3); color:var(--green); border-radius:20px; padding:4px 12px; font-size:12px; font-weight:600; margin-bottom:16px; }
+.rate-tag.stale{ background:rgba(245,135,74,.1); border-color:rgba(245,135,74,.3); color:var(--orange); }
+.expense-form-card{ background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:16px; margin-bottom:16px; }
+.form-label{ font-size:12px; color:var(--text-dim); margin-bottom:6px; display:block; }
+.form-input,.form-select,.form-textarea{ width:100%; background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:12px; color:var(--text); font-family:'Heebo',sans-serif; font-size:15px; text-align:right; outline:none; margin-bottom:12px; transition:border-color .2s; }
+.form-input:focus,.form-select:focus,.form-textarea:focus{ border-color:var(--blue-light); }
+.form-row{ display:flex; gap:10px; }
+.form-row>div{ flex:1; }
+.currency-toggle{ display:flex; gap:8px; margin-bottom:12px; }
+.currency-btn{ flex:1; padding:10px; border-radius:10px; border:1px solid var(--border); background:var(--bg); color:var(--text-dim); font-family:'Heebo',sans-serif; font-size:14px; font-weight:600; cursor:pointer; transition:all .2s; }
+.currency-btn.active{ background:var(--blue); border-color:var(--blue); color:white; }
+.add-expense-btn{ width:100%; background:linear-gradient(135deg,var(--green),#1fa87a); color:#000; border:none; border-radius:12px; padding:14px; font-family:'Heebo',sans-serif; font-size:15px; font-weight:700; cursor:pointer; transition:transform .15s; -webkit-tap-highlight-color:transparent; }
+.add-expense-btn:active{ transform:scale(.97); }
+.expense-item{ background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:14px; margin-bottom:10px; display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+.expense-item-cat{ font-size:20px; flex-shrink:0; }
+.expense-item-info{ flex:1; min-width:0; }
+.expense-item-cat-name{ font-size:12px; color:var(--text-dim); }
+.expense-item-desc{ font-size:14px; font-weight:500; margin-top:2px; word-break:break-word; }
+.expense-item-amount{ font-size:17px; font-weight:900; color:var(--gold); }
+.expense-item-del{ background:none; border:none; color:var(--red); cursor:pointer; font-size:18px; padding:4px; }
+.exp-action-row{ display:flex; gap:10px; margin-bottom:12px; }
+.convert-btn{ flex:1; background:rgba(212,168,67,.1); border:1px solid rgba(212,168,67,.3); color:var(--gold); border-radius:12px; padding:12px; font-family:'Heebo',sans-serif; font-size:13px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; }
+.csv-btn    { flex:1; background:rgba(45,212,160,.1); border:1px solid rgba(45,212,160,.3); color:var(--green); border-radius:12px; padding:12px; font-family:'Heebo',sans-serif; font-size:13px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; }
+.ai-analyze-btn{ width:100%; background:linear-gradient(135deg,rgba(155,114,240,.25),rgba(26,111,181,.2)); border:1px solid rgba(155,114,240,.5); color:var(--purple); border-radius:12px; padding:14px; font-family:'Heebo',sans-serif; font-size:15px; font-weight:700; cursor:pointer; margin-bottom:16px; display:flex; align-items:center; justify-content:center; gap:8px; transition:transform .15s; -webkit-tap-highlight-color:transparent; }
+.ai-analyze-btn:active{ transform:scale(.97); }
+.ai-result{ background:var(--surface); border:1px solid rgba(155,114,240,.3); border-radius:var(--radius); padding:20px; margin-bottom:16px; font-size:14px; line-height:1.8; }
+.ai-result h3{ font-size:17px; font-weight:700; color:var(--purple); margin-bottom:12px; }
+.cat-chips{ display:flex; gap:8px; overflow-x:auto; padding-bottom:8px; margin-bottom:12px; scrollbar-width:none; }
+.cat-chips::-webkit-scrollbar{ display:none; }
+.cat-chip{ flex-shrink:0; padding:6px 14px; border-radius:20px; border:1px solid var(--border); background:var(--surface); color:var(--text-dim); font-family:'Heebo',sans-serif; font-size:13px; font-weight:500; cursor:pointer; transition:all .2s; -webkit-tap-highlight-color:transparent; }
+.cat-chip.active{ color:white; border-color:transparent; }
 
-<div class="toast" id="toast"></div>
-<script src="app.js"></script>
-</body>
-</html>
+/* ── MAP ─────────────────────────────────────────────────────── */
+#mapContainer{ width:100%; height:calc(100vh - 160px); border-radius:var(--radius); overflow:hidden; border:1px solid var(--border); }
+#mapContainer iframe{ width:100%; height:100%; border:none; }
+
+/* ── CHAT ────────────────────────────────────────────────────── */
+.chat-wrapper{ display:flex; flex-direction:column; height:calc(100vh - 170px); min-height:400px; }
+.chat-header{ display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+.chat-clear-btn{ background:rgba(255,255,255,.05); border:1px solid var(--border); color:var(--text-dim); border-radius:8px; padding:6px 12px; font-family:'Heebo',sans-serif; font-size:12px; cursor:pointer; }
+.chat-messages{ flex:1; overflow-y:auto; padding:4px 0 12px; display:flex; flex-direction:column; gap:12px; scrollbar-width:thin; scrollbar-color:var(--border) transparent; }
+.chat-messages::-webkit-scrollbar{ width:4px; }
+.chat-messages::-webkit-scrollbar-thumb{ background:var(--border); border-radius:4px; }
+.chat-row     { display:flex; }
+.chat-row-user{ justify-content:flex-start; }
+.chat-row-ai  { justify-content:flex-end; }
+.chat-bubble  { max-width:80%; padding:12px 16px; border-radius:18px; font-size:14px; line-height:1.6; word-break:break-word; }
+.chat-bubble-user{ background:var(--blue); color:white; border-bottom-right-radius:6px; }
+.chat-bubble-ai  { background:var(--surface2); color:var(--text); border:1px solid var(--border); border-bottom-left-radius:6px; }
+.chat-input-row{ display:flex; gap:10px; align-items:flex-end; padding-top:10px; border-top:1px solid var(--border); }
+.chat-input{ flex:1; background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:12px 14px; color:var(--text); font-family:'Heebo',sans-serif; font-size:15px; text-align:right; outline:none; resize:none; line-height:1.5; min-height:46px; max-height:120px; transition:border-color .2s; }
+.chat-input:focus{ border-color:var(--blue-light); }
+.chat-send-btn{ width:46px; height:46px; flex-shrink:0; background:var(--blue); border:none; border-radius:14px; color:white; font-size:20px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:transform .15s,opacity .15s; -webkit-tap-highlight-color:transparent; }
+.chat-send-btn:active{ transform:scale(.92); }
+.chat-send-btn:disabled{ opacity:.4; cursor:not-allowed; }
+.chat-hint{ font-size:11px; color:var(--text-dim); text-align:center; margin-top:6px; }
+.typing-dot{ display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--text-dim); margin:0 2px; animation:typingBounce 1.2s infinite ease-in-out; }
+.typing-dot:nth-child(2){ animation-delay:.2s; }
+.typing-dot:nth-child(3){ animation-delay:.4s; }
+@keyframes typingBounce{ 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-6px)} }
+
+/* ── LOADING ─────────────────────────────────────────────────── */
+.search-loading{ text-align:center; padding:40px; color:var(--text-dim); font-size:14px; }
+.spinner{ display:inline-block; width:24px; height:24px; border:3px solid var(--border); border-top-color:var(--blue-light); border-radius:50%; animation:spin .8s linear infinite; margin-bottom:12px; }
+@keyframes spin{ to{transform:rotate(360deg)} }
+
+/* ── MODAL ───────────────────────────────────────────────────── */
+.modal-overlay{ position:fixed; inset:0; z-index:200; background:rgba(0,0,0,.7); display:flex; align-items:flex-end; justify-content:center; opacity:0; pointer-events:none; transition:opacity .25s; }
+.modal-overlay.open{ opacity:1; pointer-events:all; }
+.modal{ background:var(--surface); border:1px solid var(--border); border-radius:24px 24px 0 0; padding:24px 20px 40px; width:100%; max-width:600px; max-height:88vh; overflow-y:auto; transform:translateY(100%); transition:transform .3s cubic-bezier(.34,1.2,.64,1); position:relative; }
+.modal-overlay.open .modal{ transform:none; }
+.modal-handle{ width:40px; height:4px; background:var(--border); border-radius:2px; margin:0 auto 20px; }
+.modal-title { font-size:20px; font-weight:900; margin-bottom:20px; color:var(--gold); }
+.modal-close { position:absolute; left:20px; top:24px; background:none; border:none; color:var(--text-dim); font-size:24px; cursor:pointer; }
+.modal-body  { font-size:14px; line-height:1.8; }
+.modal-body h4{ color:var(--blue-light); margin:12px 0 4px; font-size:13px; text-transform:uppercase; letter-spacing:.5px; }
+.save-btn    { width:100%; background:var(--blue); border:none; border-radius:12px; padding:14px; color:white; font-family:'Heebo',sans-serif; font-size:15px; font-weight:700; cursor:pointer; margin-top:16px; }
+
+/* ── TOAST ───────────────────────────────────────────────────── */
+.toast{ position:fixed; bottom:84px; left:50%; transform:translateX(-50%) translateY(20px); background:var(--surface2); border:1px solid var(--border); color:var(--text); padding:12px 24px; border-radius:12px; font-size:14px; z-index:300; opacity:0; transition:all .3s; pointer-events:none; white-space:nowrap; box-shadow:var(--shadow); }
+.toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+select option{ background:#1a2e50; }
+
+/* ── PLACE SEARCH FORM ───────────────────────────────────────── */
+.pf-search-wrap {
+  margin-bottom: 14px;
+}
+.pf-search-row {
+  display: flex; gap: 8px; align-items: center;
+}
+.pf-search-input {
+  flex: 1; background: var(--bg); border: 1.5px solid var(--blue-light);
+  border-radius: 12px; padding: 12px 14px; color: var(--text);
+  font-family: 'Heebo', sans-serif; font-size: 15px; text-align: right;
+  outline: none; transition: border-color .2s;
+}
+.pf-search-input:focus { border-color: var(--blue); }
+.pf-search-btn {
+  flex-shrink: 0; background: var(--blue); color: white; border: none;
+  border-radius: 12px; padding: 12px 16px; font-family: 'Heebo', sans-serif;
+  font-size: 14px; font-weight: 700; cursor: pointer;
+  transition: transform .15s; -webkit-tap-highlight-color: transparent;
+}
+.pf-search-btn:active { transform: scale(.95); }
+
+/* results dropdown */
+.pf-results {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 12px; margin-top: 6px; overflow: hidden;
+  max-height: 280px; overflow-y: auto;
+}
+.pf-result-loading,
+.pf-result-empty {
+  padding: 16px; text-align: center; font-size: 13px; color: var(--text-dim);
+}
+.pf-result-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 14px; cursor: pointer; transition: background .15s;
+  border-bottom: 1px solid var(--border);
+}
+.pf-result-item:last-child { border-bottom: none; }
+.pf-result-item:hover, .pf-result-item:active { background: rgba(58,159,216,.1); }
+.pf-result-icon { font-size: 20px; flex-shrink: 0; }
+.pf-result-text { flex: 1; min-width: 0; }
+.pf-result-name { font-size: 14px; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pf-result-addr { font-size: 11px; color: var(--text-dim); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pf-result-arrow { color: var(--text-dim); font-size: 18px; flex-shrink: 0; }
+
+/* selected badge */
+.pf-map-wrap { margin-bottom: 14px; }
+.pf-selected-badge {
+  background: rgba(45,212,160,.1); border: 1px solid rgba(45,212,160,.3);
+  color: var(--green); border-radius: 10px; padding: 8px 12px;
+  font-size: 12px; margin-top: 8px; line-height: 1.6;
+}
+
+/* ── KEY MANAGEMENT MODAL ───────────────────────────────────── */
+.key-section {
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: 14px; padding: 16px; margin-bottom: 14px;
+}
+.key-section-title {
+  font-size: 15px; font-weight: 700; margin-bottom: 6px; color: var(--gold);
+}
+.key-section-sub {
+  font-size: 12px; color: var(--text-dim); margin-bottom: 12px; line-height: 1.7;
+}
+.key-save-btn {
+  width: 100%; background: var(--blue); border: none; border-radius: 10px;
+  padding: 11px; color: white; font-family: 'Heebo', sans-serif;
+  font-size: 14px; font-weight: 700; cursor: pointer; margin-bottom: 6px;
+}
+.key-del-btn {
+  width: 100%; background: rgba(232,85,85,.1); border: 1px solid rgba(232,85,85,.3);
+  color: var(--red); border-radius: 10px; padding: 10px;
+  font-family: 'Heebo', sans-serif; font-size: 13px; font-weight: 600; cursor: pointer;
+}
+
+/* ── PLACE FORM NO-KEY WARNING ──────────────────────────────── */
+.pf-no-key-warn {
+  background: rgba(245,135,74,.1); border: 1px solid rgba(245,135,74,.3);
+  color: var(--orange); border-radius: 10px; padding: 10px 14px;
+  font-size: 13px; margin-bottom: 10px;
+}
+
+/* ── LEAFLET OVERRIDES ──────────────────────────────────────── */
+.leaflet-container { font-family: 'Heebo', sans-serif !important; }
+.leaflet-popup-content-wrapper {
+  background: #162440 !important; color: #e8f0fb !important;
+  border: 1px solid rgba(58,159,216,0.3) !important;
+  border-radius: 10px !important; box-shadow: 0 4px 16px rgba(0,0,0,.5) !important;
+}
+.leaflet-popup-tip { background: #162440 !important; }
+.leaflet-popup-content { font-size: 13px !important; }
+.leaflet-control-zoom a {
+  background: #162440 !important; color: #e8f0fb !important;
+  border-color: rgba(58,159,216,0.3) !important;
+}
+
+/* ── MAIN MAP PAGE ──────────────────────────────────────────── */
+#mainMapContainer {
+  width: 100%; height: calc(100vh - 130px);
+  border-radius: var(--radius); overflow: hidden;
+  border: 1px solid var(--border);
+}
+
+/* ── INFO MODAL NAV BUTTONS ─────────────────────────────────── */
+.nav-action-btn {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 11px 14px; border-radius: 12px;
+  background: linear-gradient(135deg,var(--green),#1fa87a);
+  color: #000; font-family: 'Heebo', sans-serif; font-size: 13px; font-weight: 700;
+  text-decoration: none; transition: transform .15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.nav-action-btn:active { transform: scale(.95); }
+.nav-waze {
+  background: linear-gradient(135deg,#33ccff,#0099cc);
+  color: white;
+}
