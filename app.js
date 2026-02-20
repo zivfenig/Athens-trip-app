@@ -5,9 +5,20 @@
 
 // ─── CONSTANTS ───────────────────────────────────────────────
 const ALLOWED_USERS       = ['זיו', 'ירדן', 'מנהל'];
-const HOTEL_LAT           = 37.9271;
-const HOTEL_LNG           = 23.7058;
 const DAY_NAMES           = ['יום 1', 'יום 2', 'יום 3', 'יום 4'];
+
+// Hotel location — editable by admin, stored in localStorage
+const HOTEL_LAT_DEFAULT  = 37.9271;
+const HOTEL_LNG_DEFAULT  = 23.7058;
+const HOTEL_NAME_DEFAULT = 'Faliro 8, Athens';
+function getHotelLat()  { return parseFloat(localStorage.getItem('hotel_lat')  || HOTEL_LAT_DEFAULT); }
+function getHotelLng()  { return parseFloat(localStorage.getItem('hotel_lng')  || HOTEL_LNG_DEFAULT); }
+function getHotelName() { return localStorage.getItem('hotel_name') || HOTEL_NAME_DEFAULT; }
+function saveHotelLocation(lat, lng, name) {
+  localStorage.setItem('hotel_lat',  lat);
+  localStorage.setItem('hotel_lng',  lng);
+  localStorage.setItem('hotel_name', name);
+}
 const EUR_TO_ILS_FALLBACK = 3.9;
 const HF_BASE_URL         = 'https://router.huggingface.co/v1';
 const HF_MODEL            = 'openai/gpt-oss-120b:groq';
@@ -187,6 +198,14 @@ function doLogin() {
   document.getElementById('app').style.display='block';
   document.getElementById('topBarUser').textContent=val;
   document.getElementById('adminBadgeTop').style.display=isAdmin?'inline':'none';
+  // Show hotel edit button for admin
+  const hotelBtn = document.getElementById('hotelEditBtn');
+  if (hotelBtn) hotelBtn.style.display = isAdmin ? 'inline-block' : 'none';
+  // Update hotel name display from localStorage
+  const heroSub = document.getElementById('heroHotelName');
+  if (heroSub) heroSub.textContent = getHotelName() + ' – בסיס המלון שלנו';
+  const mapSub = document.getElementById('mapHotelName');
+  if (mapSub) mapSub.textContent = 'מלון ' + getHotelName();
   fetchEurRate(); initApp();
 }
 function doLogout() {
@@ -286,7 +305,7 @@ function renderPlacePage(page) {
   // ── filter + sort
   let filtered=af==='all'?[...items]:items.filter(i=>i.catId===af);
   if(isProx) {
-    const lat=window._userLat||HOTEL_LAT, lng=window._userLng||HOTEL_LNG;
+    const lat=window._userLat||getHotelLat(), lng=window._userLng||getHotelLng();
     filtered.sort((a,b)=>Math.hypot(a.lat-lat,a.lng-lng)-Math.hypot(b.lat-lat,b.lng-lng));
   }
 
@@ -327,7 +346,7 @@ function sortByProximity(page) {
   showToast('📍 מאתר מיקום...');
   navigator.geolocation.getCurrentPosition(
     pos=>{ window._userLat=pos.coords.latitude; window._userLng=pos.coords.longitude; sortedByProx[page]=true; renderPlacePage(page); showToast('✅ ממויין לפי קרבה!'); },
-    ()=>{ window._userLat=HOTEL_LAT; window._userLng=HOTEL_LNG; sortedByProx[page]=true; renderPlacePage(page); showToast('📍 ממויין ממלון (GPS לא זמין)'); }
+    ()=>{ window._userLat=getHotelLat(); window._userLng=getHotelLng(); sortedByProx[page]=true; renderPlacePage(page); showToast('📍 ממויין ממלון (GPS לא זמין)'); }
   );
 }
 
@@ -630,13 +649,13 @@ function initMainMap() {
   if (_mainMap) { _mainMap.remove(); _mainMap = null; }
 
   _mainMap = L.map('mainMapContainer', { attributionControl: false })
-              .setView([HOTEL_LAT, HOTEL_LNG], 13);
+              .setView([getHotelLat(), getHotelLng()], 13);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(_mainMap);
 
   // Hotel marker
   const hotelIcon = L.divIcon({ className:'', html:'<div style="background:#d4a843;color:#000;border-radius:50%;width:34px;height:34px;display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 2px 8px rgba(0,0,0,.5)">🏨</div>', iconSize:[34,34], iconAnchor:[17,17] });
-  L.marker([HOTEL_LAT, HOTEL_LNG], { icon: hotelIcon }).addTo(_mainMap)
-   .bindPopup('<b>🏨 המלון שלנו</b><br>Faliro 8, Athens').openPopup();
+  L.marker([getHotelLat(), getHotelLng()], { icon: hotelIcon }).addTo(_mainMap)
+   .bindPopup('<b>🏨 ' + getHotelName() + '</b>').openPopup();
 
   // Place markers
   const pageIcons = { attractions:'🏛️', restaurants:'🍽️', shopping:'🛍️' };
@@ -728,9 +747,9 @@ function optimizeItineraryDay() {
   // get coords for each
   const withCoords=dayItems.map(entry=>{
     const item=load(entry.sourcePage).find(i=>i.id===entry.sourceId);
-    return {...entry, lat:item?.lat||HOTEL_LAT, lng:item?.lng||HOTEL_LNG};
+    return {...entry, lat:item?.lat||getHotelLat(), lng:item?.lng||getHotelLng()};
   });
-  let rem=[...withCoords], ord=[], cLat=HOTEL_LAT, cLng=HOTEL_LNG;
+  let rem=[...withCoords], ord=[], cLat=getHotelLat(), cLng=getHotelLng();
   while(rem.length){ let best=null,bd=Infinity; rem.forEach(a=>{const d=Math.hypot(a.lat-cLat,a.lng-cLng);if(d<bd){bd=d;best=a;}}); ord.push(best); cLat=best.lat; cLng=best.lng; rem=rem.filter(a=>a.id!==best.id); }
   ord.forEach((e,i)=>{ const idx=itin.findIndex(x=>x.id===e.id); if(idx>=0) itin[idx].order=i+1; });
   save('itinerary',itin); renderItinerary(); showToast('✅ סדר עודכן!');
@@ -891,6 +910,102 @@ function clearKey() {
   localStorage.removeItem('hf_token'); closeModalDirect(); updateKeyStatus(); showToast('🗑️ HF Token נמחק');
 }
 
+
+
+// ─── HOTEL SETTINGS (admin only) ─────────────────────────────
+function showHotelModal() {
+  const lat  = getHotelLat();
+  const lng  = getHotelLng();
+  const name = getHotelName();
+  document.getElementById('modalTitle').textContent = '🏨 מיקום המלון';
+  document.getElementById('modalContent').innerHTML = `
+    <div class="pf-instructions" style="margin-bottom:14px">
+      <div class="pf-instruction-step">1️⃣ פתחו גוגל מפס ומצאו את המלון</div>
+      <div class="pf-instruction-step">2️⃣ לחצו שיתוף ← העתק קישור</div>
+      <div class="pf-instruction-step">3️⃣ הדביקו כאן</div>
+    </div>
+    <label class="form-label">🔗 קישור גוגל מפס</label>
+    <input class="form-input" id="hotelUrlInput"
+      placeholder="https://www.google.com/maps/place/..."
+      style="direction:ltr;text-align:left;font-size:13px;margin-bottom:6px"
+      oninput="onHotelUrlInput()" onpaste="setTimeout(onHotelUrlInput,50)">
+    <div id="hotelUrlStatus" style="font-size:12px;min-height:18px;margin-bottom:12px"></div>
+
+    <label class="form-label">שם המלון</label>
+    <input class="form-input" id="hotelNameInput" value="${name}" placeholder="שם המלון...">
+
+    <label class="form-label" style="margin-top:8px">קואורדינטות נוכחיות</label>
+    <div style="display:flex;gap:8px">
+      <input class="form-input" id="hotelLatInput"  value="${lat}" placeholder="Latitude"  style="direction:ltr;flex:1">
+      <input class="form-input" id="hotelLngInput"  value="${lng}" placeholder="Longitude" style="direction:ltr;flex:1">
+    </div>
+    <div id="hotelLeafletMap" style="width:100%;height:200px;border-radius:12px;overflow:hidden;margin:12px 0"></div>
+
+    <button class="save-btn" onclick="saveHotelFromModal()">💾 שמור מיקום מלון</button>`;
+  openModal();
+  setTimeout(() => _initHotelMap(lat, lng), 200);
+}
+
+let _hotelMap = null, _hotelMarker = null;
+function _initHotelMap(lat, lng) {
+  const el = document.getElementById('hotelLeafletMap'); if (!el) return;
+  if (_hotelMap) { _hotelMap.remove(); _hotelMap = null; }
+  _hotelMap = L.map('hotelLeafletMap', { zoomControl:true, attributionControl:false }).setView([lat, lng], 16);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19 }).addTo(_hotelMap);
+  _hotelMarker = L.marker([lat, lng], { draggable:true }).addTo(_hotelMap);
+  _hotelMarker.on('dragend', e => {
+    const pos = e.target.getLatLng();
+    document.getElementById('hotelLatInput').value = pos.lat.toFixed(6);
+    document.getElementById('hotelLngInput').value = pos.lng.toFixed(6);
+  });
+  setTimeout(() => _hotelMap.invalidateSize(), 150);
+}
+
+async function onHotelUrlInput() {
+  const url = document.getElementById('hotelUrlInput')?.value.trim() || '';
+  const statusEl = document.getElementById('hotelUrlStatus');
+  if (!url) return;
+  const coords = parseGMapsUrl(url);
+  if (coords) {
+    document.getElementById('hotelLatInput').value = coords.lat.toFixed(6);
+    document.getElementById('hotelLngInput').value = coords.lng.toFixed(6);
+    const name = parseGMapsName(url);
+    if (name) document.getElementById('hotelNameInput').value = name;
+    if (statusEl) statusEl.innerHTML = '<span style="color:var(--green)">✅ מיקום זוהה</span>';
+    _initHotelMap(coords.lat, coords.lng);
+    return;
+  }
+  if (/goo\.gl\/|maps\.app\.goo\.gl/.test(url)) {
+    if (statusEl) statusEl.innerHTML = '<span style="color:var(--text-dim)">🔄 פותר קישור...</span>';
+    try {
+      const res = await fetch('https://corsproxy.io/?' + encodeURIComponent(url));
+      const coords2 = parseGMapsUrl(res.url) || parseGMapsUrl(await res.text());
+      if (coords2) {
+        document.getElementById('hotelLatInput').value = coords2.lat.toFixed(6);
+        document.getElementById('hotelLngInput').value = coords2.lng.toFixed(6);
+        if (statusEl) statusEl.innerHTML = '<span style="color:var(--green)">✅ מיקום זוהה</span>';
+        _initHotelMap(coords2.lat, coords2.lng);
+      } else {
+        if (statusEl) statusEl.innerHTML = '<span style="color:var(--orange)">⚠️ לא זוהה מיקום</span>';
+      }
+    } catch(e) { if (statusEl) statusEl.innerHTML = '<span style="color:var(--orange)">⚠️ שגיאה</span>'; }
+  }
+}
+
+function saveHotelFromModal() {
+  const lat  = parseFloat(document.getElementById('hotelLatInput').value);
+  const lng  = parseFloat(document.getElementById('hotelLngInput').value);
+  const name = document.getElementById('hotelNameInput').value.trim() || HOTEL_NAME_DEFAULT;
+  if (!lat || !lng) { showToast('⚠️ נא להזין קואורדינטות'); return; }
+  saveHotelLocation(lat, lng, name);
+  // Update displayed hotel name in home + map page
+  const heroSub = document.getElementById('heroHotelName');
+  if (heroSub) heroSub.textContent = name + ' – בסיס המלון שלנו';
+  const mapSub = document.getElementById('mapHotelName');
+  if (mapSub) mapSub.textContent = 'מלון ' + name;
+  closeModalDirect();
+  showToast('✅ מיקום המלון עודכן!');
+}
 
 // ═══════════════════════════════════════════════════════════════
 //  MODAL / TOAST
