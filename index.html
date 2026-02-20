@@ -44,7 +44,8 @@
     <div class="trip-hero">
       <div class="trip-hero-emoji">⛵</div>
       <div class="trip-hero-title">ברוכים הבאים ליוון!</div>
-      <div class="trip-hero-sub">Faliro 8, Athens – בסיס המלון שלנו</div>
+      <div class="trip-hero-sub"><span id="heroHotelName">Faliro 8, Athens – בסיס המלון שלנו</span></div>
+      <button id="hotelEditBtn" onclick="showHotelModal()" style="display:none;margin-top:8px;background:rgba(212,168,67,.15);border:1px solid rgba(212,168,67,.4);color:var(--gold);border-radius:10px;padding:6px 14px;font-family:'Heebo',sans-serif;font-size:12px;font-weight:700;cursor:pointer">🏨 ערוך מיקום מלון</button>
       <div class="trip-stats">
         <div class="trip-stat"><div class="trip-stat-num" id="statItinerary">0</div><div class="trip-stat-label">במסלול</div></div>
         <div class="trip-stat"><div class="trip-stat-num" id="statAttr">0</div><div class="trip-stat-label">אטרקציות</div></div>
@@ -163,7 +164,7 @@
   <!-- ══ PAGE: מפה ════════════════════════════════════════════ -->
   <div id="pageMap" class="page" style="padding-bottom:80px">
     <div class="page-header">🗺️ מפה</div>
-    <div class="page-subheader">מלון Faliro 8 – אתונה</div>
+    <div class="page-subheader" id="mapHotelName">מלון Faliro 8 – אתונה</div>
     <div id="mainMapContainer"></div>
   </div>
 
