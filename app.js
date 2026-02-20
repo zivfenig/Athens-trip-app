@@ -146,15 +146,22 @@ const defaultShopping = [
 // ─── FIREBASE CONFIG ─────────────────────────────────────────
 // Replace these values with your Firebase project config:
 // Firebase console → Project Settings → Your Apps → Web App → Config
+// const FIREBASE_CONFIG = {
+//   apiKey:            "YOUR_API_KEY",
+//   authDomain:        "YOUR_PROJECT.firebaseapp.com",
+//   projectId:         "YOUR_PROJECT_ID",
+//   storageBucket:     "YOUR_PROJECT.appspot.com",
+//   messagingSenderId: "YOUR_SENDER_ID",
+//   appId:             "YOUR_APP_ID"
+// };
 const FIREBASE_CONFIG = {
-  apiKey:            "YOUR_API_KEY",
-  authDomain:        "YOUR_PROJECT.firebaseapp.com",
-  projectId:         "YOUR_PROJECT_ID",
-  storageBucket:     "YOUR_PROJECT.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId:             "YOUR_APP_ID"
+  apiKey: "AIzaSyA4H4HXFCAzX_2TYlSRy-5GFCKDBV_uhac",
+  authDomain: "athens-ziv-yarden.firebaseapp.com",
+  projectId: "athens-ziv-yarden",
+  storageBucket: "athens-ziv-yarden.firebasestorage.app",
+  messagingSenderId: "320761054181",
+  appId: "1:320761054181:web:96288ca6dcfe7f28a3e50c"
 };
-
 const STORE_DEFAULTS = {
   attractions: ()=>defaultAttractions,
   attrCats:    ()=>defaultAttrCats,
@@ -197,19 +204,20 @@ async function initFirebase() {
     _fbReady = true;
 
     // Load all collections once, then listen for live changes
+    // IMPORTANT: never auto-write to Firebase on startup — only read.
+    // Data is written to Firebase only via: save() or explicit migration button.
     const keys = Object.keys(STORE_DEFAULTS);
     await Promise.all(keys.map(async k => {
       const ref  = doc(_db, 'tripData', k);
       const snap = await getDoc(ref);
       if (snap.exists()) {
-        // Firebase has data → use it (always wins on connected devices)
+        // Firebase has data → use it
         _cache[k] = snap.data().value;
       } else {
-        // Firebase is empty for this key → check localStorage first, then defaults
+        // Firebase empty for this key → load from localStorage only (no write)
         const localRaw = localStorage.getItem('trip_v2_' + k);
-        _cache[k] = localRaw ? JSON.parse(localRaw) : STORE_DEFAULTS[k]();
-        // Write whatever we found to Firebase (localStorage data or defaults)
-        await setDoc(ref, { value: _cache[k] });
+        _cache[k] = localRaw ? JSON.parse(localRaw) : [];
+        // Do NOT write to Firebase here — use the migration button instead
       }
     }));
 
