@@ -143,18 +143,137 @@ const defaultShopping = [
 // ═══════════════════════════════════════════════════════════════
 //  STORAGE
 // ═══════════════════════════════════════════════════════════════
-const STORE = {
-  attractions: { key:'trip_v2_attractions',  def:()=>defaultAttractions },
-  attrCats:    { key:'trip_v2_attr_cats',    def:()=>defaultAttrCats    },
-  restaurants: { key:'trip_v2_restaurants',  def:()=>defaultRestaurants },
-  restCats:    { key:'trip_v2_rest_cats',    def:()=>defaultRestCats    },
-  shopping:    { key:'trip_v2_shopping',     def:()=>defaultShopping    },
-  shopCats:    { key:'trip_v2_shop_cats',    def:()=>defaultShopCats    },
-  itinerary:   { key:'trip_v2_itinerary',    def:()=>[]                 },
-  expenses:    { key:'trip_v2_expenses',     def:()=>[]                 }
+// ─── FIREBASE CONFIG ─────────────────────────────────────────
+// Replace these values with your Firebase project config:
+// Firebase console → Project Settings → Your Apps → Web App → Config
+const FIREBASE_CONFIG = {
+  apiKey:            "YOUR_API_KEY",
+  authDomain:        "YOUR_PROJECT.firebaseapp.com",
+  projectId:         "YOUR_PROJECT_ID",
+  storageBucket:     "YOUR_PROJECT.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId:             "YOUR_APP_ID"
 };
-function load(k)    { const s=localStorage.getItem(STORE[k].key); return s?JSON.parse(s):STORE[k].def(); }
-function save(k,v)  { localStorage.setItem(STORE[k].key, JSON.stringify(v)); }
+
+const STORE_DEFAULTS = {
+  attractions: ()=>defaultAttractions,
+  attrCats:    ()=>defaultAttrCats,
+  restaurants: ()=>defaultRestaurants,
+  restCats:    ()=>defaultRestCats,
+  shopping:    ()=>defaultShopping,
+  shopCats:    ()=>defaultShopCats,
+  itinerary:   ()=>[],
+  expenses:    ()=>[],
+};
+
+// ─── In-memory cache (keeps UI fast & synchronous) ───────────
+const _cache = {};
+let   _db    = null;   // Firestore instance (null until Firebase loads)
+let   _fbReady = false;
+
+// Initialize Firebase + load all data into cache
+async function initFirebase() {
+  const hasConfig = FIREBASE_CONFIG.apiKey !== 'YOUR_API_KEY';
+
+  if (!hasConfig) {
+    // No Firebase configured — fall back to localStorage
+    console.warn('Firebase not configured – using localStorage');
+    Object.keys(STORE_DEFAULTS).forEach(k => {
+      const raw = localStorage.getItem('trip_v2_' + k);
+      _cache[k] = raw ? JSON.parse(raw) : STORE_DEFAULTS[k]();
+    });
+    _fbReady = false;
+    return;
+  }
+
+  try {
+    // Dynamically import Firebase (CDN modules)
+    const { initializeApp }           = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js');
+    const { getFirestore, doc, getDoc, setDoc, onSnapshot, collection }
+                                       = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
+
+    const app = initializeApp(FIREBASE_CONFIG);
+    _db = getFirestore(app);
+    _fbReady = true;
+
+    // Load all collections once, then listen for live changes
+    const keys = Object.keys(STORE_DEFAULTS);
+    await Promise.all(keys.map(async k => {
+      const ref  = doc(_db, 'tripData', k);
+      const snap = await getDoc(ref);
+      if (snap.exists()) {
+        // Firebase has data → use it (always wins on connected devices)
+        _cache[k] = snap.data().value;
+      } else {
+        // Firebase is empty for this key → check localStorage first, then defaults
+        const localRaw = localStorage.getItem('trip_v2_' + k);
+        _cache[k] = localRaw ? JSON.parse(localRaw) : STORE_DEFAULTS[k]();
+        // Write whatever we found to Firebase (localStorage data or defaults)
+        await setDoc(ref, { value: _cache[k] });
+      }
+    }));
+
+    // Live listener — syncs changes from other devices instantly
+    keys.forEach(k => {
+      onSnapshot(doc(_db, 'tripData', k), snap => {
+        if (snap.exists()) {
+          _cache[k] = snap.data().value;
+          // Re-render whatever page is active
+          _onRemoteChange(k);
+        }
+      });
+    });
+
+    showToast('🔥 מחובר – נתונים משותפים');
+  } catch(e) {
+    console.error('Firebase init failed:', e);
+    // Fallback to localStorage
+    Object.keys(STORE_DEFAULTS).forEach(k => {
+      const raw = localStorage.getItem('trip_v2_' + k);
+      _cache[k] = raw ? JSON.parse(raw) : STORE_DEFAULTS[k]();
+    });
+    _fbReady = false;
+    showToast('⚠️ Firebase לא זמין – נתונים מקומיים בלבד');
+  }
+}
+
+function _onRemoteChange(k) {
+  const pageMap = {
+    attractions:'attractions', attrCats:'attractions',
+    restaurants:'restaurants', restCats:'restaurants',
+    shopping:'shopping',       shopCats:'shopping',
+    itinerary:'itinerary',     expenses:'expenses',
+  };
+  const pg = pageMap[k];
+  if (!pg) return;
+  // Only re-render if the page is currently visible
+  const pageEl = document.getElementById('page' + pg.charAt(0).toUpperCase() + pg.slice(1));
+  if (pageEl?.classList.contains('active')) {
+    if (pg === 'itinerary') renderItinerary();
+    else if (pg === 'expenses') { renderExpenses(); updateExpenseSummary(); }
+    else renderPlacePage(pg);
+  }
+}
+
+// ─── load/save — synchronous reads from cache, async writes to Firestore ──
+function load(k) {
+  return _cache[k] !== undefined ? _cache[k] : STORE_DEFAULTS[k]();
+}
+
+async function _saveToFirebase(k, v) {
+  const { doc, setDoc } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
+  await setDoc(doc(_db, 'tripData', k), { value: v });
+}
+
+function save(k, v) {
+  _cache[k] = v;
+  // Always save to localStorage as backup
+  localStorage.setItem('trip_v2_' + k, JSON.stringify(v));
+  // Save to Firebase if connected
+  if (_fbReady && _db) {
+    _saveToFirebase(k, v).catch(e => console.error('Firebase save error:', e));
+  }
+}
 
 // ═══════════════════════════════════════════════════════════════
 //  EXCHANGE RATE
@@ -232,7 +351,9 @@ function showPage(name,btn) {
   renders[name]?.();
 }
 
-function initApp() {
+async function initApp() {
+  // Load all data from Firebase (or localStorage fallback) before rendering
+  await initFirebase();
   renderSummary(); updateExpenseSummary(); updateKeyStatus();
   renderPlacePage('attractions');
   renderPlacePage('restaurants');
@@ -877,6 +998,98 @@ function clearChat(){ chatHistory=[]; const a=document.getElementById('chatMessa
 // ═══════════════════════════════════════════════════════════════
 //  KEY MANAGEMENT  (HuggingFace AI + Google Maps)
 // ═══════════════════════════════════════════════════════════════
+
+// ─── MIGRATE localStorage → Firebase ─────────────────────────
+async function migrateLocalToFirebase() {
+  if (!_fbReady || !_db) {
+    showToast('⚠️ Firebase לא מחובר – הגדירו config קודם');
+    return;
+  }
+
+  const keys = Object.keys(STORE_DEFAULTS);
+  const found = {};
+  let count = 0;
+
+  keys.forEach(k => {
+    const raw = localStorage.getItem('trip_v2_' + k);
+    if (raw) {
+      try {
+        found[k] = JSON.parse(raw);
+        count++;
+      } catch(e) {}
+    }
+  });
+
+  if (count === 0) {
+    showToast('⚠️ לא נמצאו נתונים ב-localStorage');
+    return;
+  }
+
+  // Show confirmation modal with summary
+  const summary = Object.entries(found).map(([k, v]) => {
+    const labels = {
+      attractions:'אטרקציות', attrCats:'קטגוריות אטרקציות',
+      restaurants:'מסעדות', restCats:'קטגוריות מסעדות',
+      shopping:'קניות', shopCats:'קטגוריות קניות',
+      itinerary:'מסלול', expenses:'הוצאות'
+    };
+    return `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border)">
+      <span>${labels[k]||k}</span>
+      <span style="color:var(--gold);font-weight:700">${Array.isArray(v)?v.length+' פריטים':'✓'}</span>
+    </div>`;
+  }).join('');
+
+  document.getElementById('modalTitle').textContent = '☁️ העברה ל-Firebase';
+  document.getElementById('modalContent').innerHTML = `
+    <p style="color:var(--text-dim);font-size:13px;margin-bottom:12px">
+      הנתונים הבאים נמצאו ב-localStorage של המחשב הזה וייכתבו ל-Firebase:
+    </p>
+    <div style="background:var(--bg);border-radius:10px;padding:10px 14px;margin-bottom:16px;font-size:13px">
+      ${summary}
+    </div>
+    <p style="color:var(--orange);font-size:12px;margin-bottom:16px">
+      ⚠️ הפעולה תדרוס נתונים קיימים ב-Firebase אם יש כאלה
+    </p>
+    <button class="save-btn" onclick="doMigrate()">☁️ העבר עכשיו</button>
+    <button onclick="closeModalDirect()" style="width:100%;margin-top:8px;background:none;border:1px solid var(--border);color:var(--text-dim);border-radius:10px;padding:10px;font-family:'Heebo',sans-serif;font-size:14px;cursor:pointer">ביטול</button>`;
+  openModal();
+}
+
+async function doMigrate() {
+  const keys = Object.keys(STORE_DEFAULTS);
+  const btn = document.querySelector('#modalContent .save-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ מעביר...'; }
+
+  try {
+    const { doc, setDoc } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
+    let migrated = 0;
+
+    for (const k of keys) {
+      const raw = localStorage.getItem('trip_v2_' + k);
+      if (raw) {
+        const value = JSON.parse(raw);
+        await setDoc(doc(_db, 'tripData', k), { value });
+        _cache[k] = value; // update cache too
+        migrated++;
+      }
+    }
+
+    closeModalDirect();
+    showToast('✅ ' + migrated + ' אוספים הועברו בהצלחה!');
+
+    // Re-render everything
+    renderPlacePage('attractions');
+    renderPlacePage('restaurants');
+    renderPlacePage('shopping');
+    renderItinerary();
+    renderExpenses();
+    renderSummary();
+  } catch(e) {
+    showToast('❌ שגיאה: ' + e.message);
+    if (btn) { btn.disabled = false; btn.textContent = '☁️ נסה שוב'; }
+  }
+}
+
 function updateKeyStatus() {
   const el = document.getElementById('keyStatusBtn'); if (!el) return;
   const ok = HF_TOKEN_HARDCODED !== 'YOUR_HF_TOKEN_HERE' || !!getHfToken();
@@ -885,6 +1098,14 @@ function updateKeyStatus() {
   el.style.color       = ok ? 'var(--green)' : 'var(--purple)';
 }
 
+function _migrateBtn() {
+  return '<div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">' +
+    '<div style="font-size:13px;color:var(--text-dim);margin-bottom:10px">☁️ Firebase מחובר</div>' +
+    '<button onclick="closeModalDirect();setTimeout(migrateLocalToFirebase,100)" ' +
+    'style="width:100%;background:rgba(212,168,67,.1);border:1px solid rgba(212,168,67,.35);' +
+    'color:var(--gold);border-radius:10px;padding:11px;font-family:Heebo,sans-serif;' +
+    'font-size:14px;font-weight:700;cursor:pointer">☁️ העבר נתוני המחשב ל-Firebase</button></div>';
+}
 function showKeyModal() {
   const cur = getHfToken();
   document.getElementById('modalTitle').textContent = '🔑 HuggingFace Token – AI';
@@ -896,7 +1117,8 @@ function showKeyModal() {
     </div>
     <input class="form-input" id="keyInput" type="password" placeholder="hf_..." value="${cur}" style="font-family:monospace">
     <button class="save-btn" onclick="saveKeyFromModal()">💾 שמור Token</button>
-    ${cur ? '<button onclick="clearKey()" class="key-del-btn" style="margin-top:8px">🗑️ מחק Token</button>' : ''}`;
+    ${cur ? '<button onclick="clearKey()" class="key-del-btn" style="margin-top:8px">🗑️ מחק Token</button>' : ''}
+    ${isAdmin && _fbReady ? _migrateBtn() : ''}`;
   openModal();
 }
 
